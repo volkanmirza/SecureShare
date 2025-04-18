@@ -65,7 +65,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadBtn = document.getElementById('download-btn');
     const toast = document.getElementById('toast');
     
-    const qrcodeContainer = document.getElementById('qrcode'); // QR Code container
+    const qrcodeContainer = document.getElementById('qrcode-container'); // QR Code container
+    const qrcodePrompt = document.getElementById('qrcode-prompt'); // QR Code prompt text
+    const qrcodeElement = document.getElementById('qrcode'); // Actual QR code element
     
     const successPopup = document.getElementById('success-popup');
     const successPopupMessage = document.getElementById('success-popup-message');
@@ -268,17 +270,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log("Sender keys generated.");
 
                     // --- Generate and Display QR Code ---
-                    if (qrcodeContainer && typeof QRCode !== 'undefined') {
+                    if (qrcodeContainer && qrcodeElement && qrcodePrompt && typeof QRCode !== 'undefined') {
                         try {
                             // Construct the share URL
                             const shareUrl = `${window.location.origin}${window.location.pathname}?code=${message.code}`;
                             console.log(`Generating QR code for URL: ${shareUrl}`);
                             
                             // Clear previous QR code if any
-                            qrcodeContainer.innerHTML = ''; 
+                            qrcodeElement.innerHTML = ''; 
                             
                             // Generate new QR code
-                            new QRCode(qrcodeContainer, {
+                            new QRCode(qrcodeElement, {
                                 text: shareUrl,
                                 width: 128,
                                 height: 128,
@@ -286,14 +288,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                 colorLight : "#ffffff",
                                 correctLevel : QRCode.CorrectLevel.H
                             });
-                            qrcodeContainer.classList.remove('hidden'); // Ensure it's visible
+                            qrcodeContainer.classList.remove('hidden'); // Ensure container is visible
+                            qrcodePrompt.classList.remove('hidden'); // Ensure prompt is visible
+                            // Apply translation to prompt just in case it wasn't caught initially
+                            qrcodePrompt.textContent = getTranslation('scanQrCodePrompt');
                         } catch (error) {
                             console.error("Error generating QR Code:", error);
-                            qrcodeContainer.innerHTML = 'QR Code generation failed.'; // Show error message
-                            qrcodeContainer.classList.remove('hidden');
+                            qrcodeElement.innerHTML = 'QR Code generation failed.'; // Show error message
+                            qrcodeContainer.classList.remove('hidden'); // Still show container for error message
+                            qrcodePrompt.classList.add('hidden'); // Hide prompt on error
                         }
                     } else {
-                        console.warn("QR code container or library not found.");
+                        console.warn("QR code elements or library not found.");
                     }
                     // --- End QR Code Generation ---
                     break;
@@ -418,29 +424,41 @@ document.addEventListener('DOMContentLoaded', function() {
                              console.log('File received successfully (decrypted)');
                              // Ensure all data is processed if receivedSize slightly exceeds due to chunking
                              if (receivedSize > fileMetadata.size) {
-                                 console.warn(`Received size (${receivedSize}) exceeds metadata size (${fileMetadata.size}). Trimming.`);
-                                 // This might require more complex logic if the last chunk needs trimming.
-                                 // For now, we assume the sender sends exactly fileMetadata.size bytes in total.
+                                 console.warn(`Received size (${receivedSize}) exceeds metadata size (${fileMetadata.size}).`);
+                                 // If trimming is needed, it might be complex. Assuming exact size for now.
                              }
                              receivedSize = fileMetadata.size; // Correct the size if needed
 
-                            downloadMessage.textContent = getTranslation('fileReceived');
-                            downloadBtn.classList.remove('hidden');
+                             downloadMessage.textContent = getTranslation('transferComplete'); // Update message
+                             // downloadBtn.classList.remove('hidden'); // REMOVED: Don't show the button
 
-                            try {
-                                 console.log(`Creating Blob with type: ${fileMetadata.type}, size: ${receivedSize}`);
-                                 const blob = new Blob(receivedData, { type: fileMetadata.type || 'application/octet-stream' }); // Add fallback type
-                                 const url = window.URL.createObjectURL(blob);
-                                 console.log(`Blob URL created: ${url}`);
-                                 console.log(`Setting download button: href=${url}, download=${fileMetadata.name}`);
-                                 downloadBtn.href = url;
-                                 downloadBtn.download = fileMetadata.name;
+                             try {
+                                  console.log(`Creating Blob with type: ${fileMetadata.type || 'application/octet-stream'}, size: ${receivedSize}`);
+                                  const blob = new Blob(receivedData, { type: fileMetadata.type || 'application/octet-stream' });
+                                  const url = window.URL.createObjectURL(blob);
+                                  console.log(`Blob URL created: ${url}`);
+                                  
+                                  // --- Auto Download --- 
+                                  const tempLink = document.createElement('a');
+                                  tempLink.href = url;
+                                  tempLink.download = fileMetadata.name;
+                                  document.body.appendChild(tempLink); // Required for Firefox
+                                  console.log(`Triggering auto-download for: ${fileMetadata.name}`);
+                                  tempLink.click();
+                                  document.body.removeChild(tempLink);
+                                  
+                                  // Revoke URL after a short delay
+                                  setTimeout(() => {
+                                      window.URL.revokeObjectURL(url);
+                                      console.log(`Blob URL revoked: ${url}`);
+                                  }, 1000); // 1 second delay
+                                  // --- End Auto Download ---
 
-                                 // Store the URL to be revoked later
-                                 downloadBtn.dataset.blobUrl = url; // Use data attribute to store URL
+                                  // Show success popup to receiver
+                                  showSuccessPopup(getTranslation('downloadSuccessReceiver'));
 
                              } catch(error) {
-                                 console.error("Error creating Blob or Object URL:", error);
+                                 console.error("Error creating Blob, Object URL or triggering download:", error);
                                  showToast(getTranslation('downloadSetupError'), true);
                                  resetUI();
                                  return; // Stop further processing
@@ -684,10 +702,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // initWebSocket(); // Be careful not to create rapid reconnect loops
         console.log("UI and state reset complete.");
 
-        // Clear QR Code
+        // Clear QR Code and hide its container/prompt
         if (qrcodeContainer) { 
-            qrcodeContainer.innerHTML = '';
-            qrcodeContainer.classList.add('hidden'); // Hide it again
+            qrcodeContainer.classList.add('hidden'); // Hide the whole container
+        }
+        if (qrcodeElement) { 
+            qrcodeElement.innerHTML = ''; // Clear the QR code content
+        }
+        if (qrcodePrompt) { 
+            qrcodePrompt.classList.add('hidden'); // Hide the prompt
         }
 
         // Also ensure popup is hidden on general reset
@@ -794,6 +817,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle file select from input or drag-drop
     function handleFileSelect(file) {
+        // Reset previous share state if a new file is selected after sharing
+        if (!shareResult.classList.contains('hidden')) {
+            console.log('New file selected while a share was active. Resetting UI.');
+            resetUI();
+            // Optionally re-initialize WebSocket if resetUI doesn't handle it sufficiently
+            // initWebSocket(); 
+        }
+
         selectedFile = file;
         
         // Update UI
@@ -895,30 +926,6 @@ document.addEventListener('DOMContentLoaded', function() {
           console.warn("appConfig or initializeSettings function not found. Skipping settings initialization.");
      }
 
-     // Move download button listener inside DOMContentLoaded
-     if (downloadBtn) {
-         downloadBtn.addEventListener('click', (event) => {
-             // Allow the default download behavior
-             showToast(getTranslation('downloadStarting'));
-
-             // --- TEMPORARY TEST --- 
-             // Cleanup logic is currently disabled for testing
-             /*
-             const urlToRevoke = downloadBtn.dataset.blobUrl; 
-             console.log(`Download clicked. Scheduling revoke for URL: ${urlToRevoke}`);
-             setTimeout(() => {
-                 if (urlToRevoke) {
-                     window.URL.revokeObjectURL(urlToRevoke);
-                     console.log(`Blob URL revoked: ${urlToRevoke}`);
-                     downloadBtn.dataset.blobUrl = ''; // Clear the data attribute
-                 }
-                 // resetUI(); // Temporarily disable UI reset as well
-             }, 100); 
-             */
-            console.log("Download clicked. Cleanup logic temporarily disabled for testing.");
-        });
-    }
-
     // --- Popup Control Functions ---
     function showSuccessPopup(message) {
         if (!successPopup || !successPopupMessage) return;
@@ -936,6 +943,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!successPopup) return;
         successPopup.classList.add('hidden');
     }
+
+    // Remove Donate Popup functions
+    /*
+    function showDonatePopup() {
+        ...
+    }
+    function hideDonatePopup() {
+        ...
+    }
+    */
     // --- End Popup Control Functions ---
 
     // Event listener for Popup OK button
@@ -945,4 +962,18 @@ document.addEventListener('DOMContentLoaded', function() {
             resetUI(); // Reset the UI after clicking OK
         });
     }
+
+    // Remove Event listeners for Donate Button and Popup Close Button
+    /*
+    if (donateBtn) {
+        donateBtn.addEventListener('click', () => {
+            showDonatePopup();
+        });
+    }
+    if (donatePopupCloseBtn) {
+        donatePopupCloseBtn.addEventListener('click', () => {
+            hideDonatePopup();
+        });
+    }
+    */
 });

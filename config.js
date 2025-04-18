@@ -4,8 +4,8 @@
 const translations = {
     en: {
         // Header
-        "appTitle": "SecureShare",
-        "appDescription": "Secure end-to-end encrypted file sharing",
+        "appTitle": "foxfile.net",
+        "appDescription": "Secure end-to-end encrypted file sharing.",
         
         // Upload section
         "shareFile": "Share File",
@@ -39,14 +39,14 @@ const translations = {
         "step4Title": "4. Secure Transfer",
         "step4Text": "The file is transferred directly to the receiver with encryption.",
         "securityTitle": "Security",
-        "securityText": "Your files are securely encrypted directly in your browser before sending. Only the intended receiver can decrypt them. Even our server cannot see the content of your files.",
+        "securityText": "Your files are securely encrypted directly in your browser before sending. Only the intended receiver can decrypt them. Even our server cannot see the content of your files. We don't handle your files; we provide end-to-end encrypted transfer.",
         "principleTitle": "Working Principle",
         "principleText": "You connect securely to our server to find the other person using the share code. Once connected, the server helps relay the encrypted file data directly between you and the receiver.",
         "technologiesTitle": "Technologies Used",
         "technologiesText": "Built with HTML5, Tailwind CSS, and Vanilla JavaScript. Uses Node.js with WebSocket for signaling and data relay, and the Web Crypto API for secure end-to-end encryption.",
         
         // Footer
-        "footerText": "SecureShare © 2023 | End-to-end encrypted, peer-to-peer file sharing application",
+        "footerText": "foxfile.net © 2023 | End-to-end encrypted, peer-to-peer file sharing application",
         
         // Notifications
         "codeCopied": "Code copied",
@@ -55,6 +55,8 @@ const translations = {
         "invalidCodeFormat": "Invalid code format",
         "connectionError": "Connection error occurred",
         "fileReadError": "File reading error",
+        "scanQrCodePrompt": "Scan to download",
+        "downloadSuccessReceiver": "File downloaded successfully!",
         // E2E Crypto & Connection Status
         "generatingCode": "Generating code...",
         "connectingToSender": "Connecting to sender...",
@@ -75,12 +77,14 @@ const translations = {
         "transferSuccessPrompt": "File sent successfully! Select another file to share again.",
         // Popup translations
         "successTitle": "Success!",
-        "okButton": "OK"
+        "okButton": "OK",
+        // Donation Button
+        "donateButton": "Support Us"
     },
     tr: {
         // Header
-        "appTitle": "SecureShare",
-        "appDescription": "Güvenli uçtan uca şifreli dosya paylaşımı",
+        "appTitle": "foxfile.net",
+        "appDescription": "Güvenli uçtan uca şifreli dosya paylaşımı.",
         
         // Upload section
         "shareFile": "Dosya Paylaş",
@@ -114,14 +118,14 @@ const translations = {
         "step4Title": "4. Güvenli Transfer",
         "step4Text": "Dosya şifreli olarak doğrudan alıcıya aktarılır.",
         "securityTitle": "Güvenlik",
-        "securityText": "Dosyalarınız gönderilmeden önce doğrudan tarayıcınızda güvenli bir şekilde şifrelenir. Sadece hedef alıcı şifreyi çözebilir. Sunucumuz bile dosyalarınızın içeriğini göremez.",
+        "securityText": "Dosyalarınız gönderilmeden önce doğrudan tarayıcınızda güvenli bir şekilde şifrelenir. Sadece hedef alıcı şifreyi çözebilir. Sunucumuz bile dosyalarınızın içeriğini göremez. Dosyalarınızla ilgilenmiyoruz, size uçtan uca şifreli gönderim imkanı sunuyoruz.",
         "principleTitle": "Çalışma Prensibi",
         "principleText": "Paylaşım kodunu kullanarak diğer kişiyi bulmak için sunucumuza güvenli bir şekilde bağlanırsınız. Bağlantı kurulduktan sonra, sunucu şifrelenmiş dosya verisini sizinle alıcı arasında doğrudan iletmeye yardımcı olur.",
         "technologiesTitle": "Kullanılan Teknolojiler",
         "technologiesText": "HTML5, Tailwind CSS ve Vanilla JavaScript ile geliştirilmiştir. Sinyalleşme ve veri aktarımı için WebSocket ile Node.js, güvenli uçtan uca şifreleme için Web Crypto API kullanır.",
         
         // Footer
-        "footerText": "SecureShare © 2023 | Uçtan uca şifreli, eşler arası dosya paylaşım uygulaması",
+        "footerText": "foxfile.net © 2023 | Uçtan uca şifreli, eşler arası dosya paylaşım uygulaması",
         
         // Notifications
         "codeCopied": "Kod kopyalandı",
@@ -130,6 +134,8 @@ const translations = {
         "invalidCodeFormat": "Geçersiz kod formatı",
         "connectionError": "Bağlantı hatası oluştu",
         "fileReadError": "Dosya okuma hatası",
+        "scanQrCodePrompt": "İndirmek için taratınız",
+        "downloadSuccessReceiver": "Dosya başarıyla indirildi!",
         // E2E Crypto & Connection Status (Turkish)
         "generatingCode": "Kod oluşturuluyor...",
         "connectingToSender": "Göndericiye bağlanılıyor...",
@@ -150,7 +156,9 @@ const translations = {
         "transferSuccessPrompt": "Dosya başarıyla gönderildi! Tekrar paylaşmak için başka bir dosya seçin.",
         // Popup translations (Turkish)
         "successTitle": "Başarılı!",
-        "okButton": "Tamam"
+        "okButton": "Tamam",
+        // Donation Button (Turkish)
+        "donateButton": "Destek Ol"
     }
 };
 

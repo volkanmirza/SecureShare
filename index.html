@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureShare - E2E Encrypted P2P File Sharing</title>
+    <title>foxfile.net - E2E Encrypted P2P File Sharing</title>
 
     <!-- Theme initialization script to prevent FOUC -->
     <script>
@@ -31,6 +31,9 @@
 <body>
     <!-- Settings toggles -->
     <div class="settings-container">
+        <a id="donate-btn" href="https://buymeacoffee.com/vmirza" target="_blank" rel="noopener noreferrer" class="toggle-btn" title="Support Us">
+            <i class="fas fa-coffee text-red-500"></i>
+        </a>
         <button id="language-toggle" class="toggle-btn" title="Toggle Language">
             <i class="fas fa-language"></i>
         </button>
@@ -52,17 +55,26 @@
             <!-- File Upload Section -->
             <section id="upload-section" class="card p-6">
                 <h2 class="text-2xl font-semibold mb-4" data-i18n="shareFile">Dosya Paylaş</h2>
-                
-                <div class="file-input-container mb-4">
-                    <label for="file-input" class="file-input-label">
-                        <div id="drop-zone" class="rounded-lg p-8 text-center cursor-pointer transition-colors">
-                            <div id="file-icon" class="text-5xl mb-2">📁</div>
-                            <p id="file-prompt" data-i18n="selectFilePrompt">Dosya seçmek için tıklayın veya sürükleyin</p>
-                            <p id="file-name" class="mt-2 font-medium hidden"></p>
-                            <p id="file-size" class="text-sm hidden"></p>
-                        </div>
-                        <input type="file" id="file-input" class="hidden">
-                    </label>
+
+                <!-- Container for File Info and QR Code -->
+                <div id="file-info-qr-container" class="flex items-center gap-4 mb-4">
+                    <!-- File Input Area -->
+                    <div class="file-input-container flex-grow min-w-0">
+                        <label for="file-input" class="file-input-label">
+                            <div id="drop-zone" class="rounded-lg p-8 text-center cursor-pointer transition-colors h-full flex flex-col justify-center">
+                                <div id="file-icon" class="text-5xl mb-2">📁</div>
+                                <p id="file-prompt" data-i18n="selectFilePrompt">Dosya seçmek için tıklayın veya sürükleyin</p>
+                                <p id="file-name" class="mt-2 font-medium hidden truncate"></p>
+                                <p id="file-size" class="text-sm hidden"></p>
+                            </div>
+                            <input type="file" id="file-input" class="hidden">
+                        </label>
+                    </div>
+                    <!-- QR Code (Moved here, initially hidden) -->
+                    <div id="qrcode-container" class="flex-shrink-0 hidden flex flex-col items-center">
+                         <p id="qrcode-prompt" class="text-sm mb-1" data-i18n="scanQrCodePrompt"></p> 
+                         <div id="qrcode"></div>
+                    </div>
                 </div>
                 
                 <button id="share-btn" class="w-full btn btn-primary py-3 px-4 disabled:cursor-not-allowed" disabled>
@@ -78,8 +90,7 @@
                         </button>
                     </div>
                     <p id="status-sender" class="mt-2 text-sm"></p>
-                    <!-- Placeholder for the QR Code -->
-                    <div id="qrcode" class="mt-4 flex justify-center"></div>
+                    <!-- QR Code was moved from here -->
                 </div>
             </section>
 
@@ -112,11 +123,6 @@
                             <div id="progress-bar" class="h-2 rounded-full" style="width: 0%"></div>
                         </div>
                     </div>
-
-                    <!-- Change button to an anchor tag styled as a button -->
-                    <a id="download-btn" href="#" download class="block text-center w-full mt-4 btn btn-success py-2 px-4 hidden">
-                        <span data-i18n="startDownload">İndirmeyi Başlat</span>
-                    </a>
                 </div>
             </section>
         </div>
