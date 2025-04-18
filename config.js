@@ -54,7 +54,25 @@ const translations = {
         "pleaseSelectFile": "Please select a file",
         "invalidCodeFormat": "Invalid code format",
         "connectionError": "Connection error occurred",
-        "fileReadError": "File reading error"
+        "fileReadError": "File reading error",
+        // E2E Crypto & Connection Status
+        "generatingCode": "Generating code...",
+        "connectingToSender": "Connecting to sender...",
+        "codeReceivedFromUrl": "Code received from URL, connecting...",
+        "keyGenerationError": "Error generating encryption keys",
+        "keyExchangeError": "Error during secure key exchange",
+        "keyExchangeIncomplete": "Secure connection not ready",
+        "secureConnectionEstablishedSending": "Secure connection established. Preparing to send...",
+        "secureConnectionEstablishedWaiting": "Secure connection established. Waiting for file...",
+        "encryptionError": "File encryption error",
+        "decryptionError": "File decryption error",
+        "downloadSetupError": "Error preparing file for download",
+        "transferError": "File transfer error",
+        "receiverConnectedInitiatingKeyExchange": "Receiver connected. Starting secure key exchange...",
+        "connectedToSenderInitiatingKeyExchange": "Connected to sender. Starting secure key exchange...",
+        "downloadStarting": "Download starting...",
+        "fileSentWaitingConfirmation": "File sent. Waiting for receiver confirmation...",
+        "transferSuccessPrompt": "File sent successfully! Select another file to share again."
     },
     tr: {
         // Header
@@ -108,7 +126,25 @@ const translations = {
         "pleaseSelectFile": "Lütfen bir dosya seçin",
         "invalidCodeFormat": "Geçersiz kod formatı",
         "connectionError": "Bağlantı hatası oluştu",
-        "fileReadError": "Dosya okuma hatası"
+        "fileReadError": "Dosya okuma hatası",
+        // E2E Crypto & Connection Status (Turkish)
+        "generatingCode": "Kod oluşturuluyor...",
+        "connectingToSender": "Göndericiye bağlanılıyor...",
+        "codeReceivedFromUrl": "Kod URL'den alındı, bağlanılıyor...",
+        "keyGenerationError": "Şifreleme anahtarları oluşturulurken hata",
+        "keyExchangeError": "Güvenli anahtar değişimi sırasında hata",
+        "keyExchangeIncomplete": "Güvenli bağlantı hazır değil",
+        "secureConnectionEstablishedSending": "Güvenli bağlantı kuruldu. Gönderime hazırlanılıyor...",
+        "secureConnectionEstablishedWaiting": "Güvenli bağlantı kuruldu. Dosya bekleniyor...",
+        "encryptionError": "Dosya şifreleme hatası",
+        "decryptionError": "Dosya şifre çözme hatası",
+        "downloadSetupError": "Dosya indirmeye hazırlanırken hata",
+        "transferError": "Dosya aktarım hatası",
+        "receiverConnectedInitiatingKeyExchange": "Alıcı bağlandı. Güvenli anahtar değişimi başlatılıyor...",
+        "connectedToSenderInitiatingKeyExchange": "Göndericiye bağlandı. Güvenli anahtar değişimi başlatılıyor...",
+        "downloadStarting": "İndirme başlatılıyor...",
+        "fileSentWaitingConfirmation": "Dosya gönderildi. Alıcı onayı bekleniyor...",
+        "transferSuccessPrompt": "Dosya başarıyla gönderildi! Tekrar paylaşmak için başka bir dosya seçin."
     }
 };
 

@@ -65,6 +65,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadBtn = document.getElementById('download-btn');
     const toast = document.getElementById('toast');
     
+    const qrcodeContainer = document.getElementById('qrcode'); // QR Code container
+    
     // WebSocket connection
     let socket = null;
     let sharedKey = null; // <-- Add variable for shared secret key
@@ -214,6 +216,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // --- End: Crypto Helper Functions ---
     
+    // --- Start: Handle Code from URL Parameter ---
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const codeFromUrl = urlParams.get('code');
+        if (codeFromUrl && receiveCode && receiveBtn) {
+            console.log(`Code found in URL: ${codeFromUrl}`);
+            receiveCode.value = codeFromUrl.trim().toUpperCase();
+            showToast(getTranslation('codeReceivedFromUrl')); // Optional: Notify user
+
+            // Automatically attempt to connect after a short delay 
+            // to ensure WebSocket is likely ready and UI updates are visible
+            setTimeout(() => {
+                if (receiveBtn.disabled === false) { // Only click if not already disabled
+                    console.log('Auto-clicking connect button...');
+                    receiveBtn.click();
+                }
+            }, 500); // 500ms delay
+        }
+    } catch (e) {
+        console.error("Error processing URL parameters:", e);
+    }
+    // --- End: Handle Code from URL Parameter ---
+    
     // Initialize WebSocket connection
     function initWebSocket() {
         if (socket !== null) {
@@ -235,9 +260,38 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast(getTranslation('codeCreated'));
                     shareResult.classList.remove('hidden');
                     statusSender.textContent = getTranslation('waitingForReceiver');
-                    // Sender generates keys after code is created
                     keyPair = await generateKeyPair();
                     console.log("Sender keys generated.");
+
+                    // --- Generate and Display QR Code ---
+                    if (qrcodeContainer && typeof QRCode !== 'undefined') {
+                        try {
+                            // Construct the share URL
+                            const shareUrl = `${window.location.origin}${window.location.pathname}?code=${message.code}`;
+                            console.log(`Generating QR code for URL: ${shareUrl}`);
+                            
+                            // Clear previous QR code if any
+                            qrcodeContainer.innerHTML = ''; 
+                            
+                            // Generate new QR code
+                            new QRCode(qrcodeContainer, {
+                                text: shareUrl,
+                                width: 128,
+                                height: 128,
+                                colorDark : "#000000",
+                                colorLight : "#ffffff",
+                                correctLevel : QRCode.CorrectLevel.H
+                            });
+                            qrcodeContainer.classList.remove('hidden'); // Ensure it's visible
+                        } catch (error) {
+                            console.error("Error generating QR Code:", error);
+                            qrcodeContainer.innerHTML = 'QR Code generation failed.'; // Show error message
+                            qrcodeContainer.classList.remove('hidden');
+                        }
+                    } else {
+                        console.warn("QR code container or library not found.");
+                    }
+                    // --- End QR Code Generation ---
                     break;
                     
                 case 'receiver-connected': // Received by sender
@@ -402,15 +456,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     break;
 
                 case 'download-complete': // Received by sender
-                     if (statusSender) {
-                         statusSender.textContent = getTranslation('fileSuccessfullySent');
-                         // Clean up keys?
-                         sharedKey = null;
-                         keyPair = null;
-                         setTimeout(() => {
-                            resetUI();
-                         }, 3000);
-                     }
+                     // Clean up keys
+                     sharedKey = null;
+                     keyPair = null;
+                     
+                     // Show success toast 
+                     showToast(getTranslation('transferSuccessPrompt')); 
+
+                     // Re-introduce UI reset after a delay (e.g., after toast hides)
+                     setTimeout(() => {
+                         console.log("Resetting sender UI after successful transfer.");
+                         resetUI();
+                     }, 3500); // Reset slightly after the toast (3000ms duration)
+
                      break;
 
                 default:
@@ -627,6 +685,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Re-initialize WebSocket if necessary, or ensure it's ready
         // initWebSocket(); // Be careful not to create rapid reconnect loops
         console.log("UI and state reset complete.");
+
+        // Clear QR Code
+        if (qrcodeContainer) { 
+            qrcodeContainer.innerHTML = '';
+            qrcodeContainer.classList.add('hidden'); // Hide it again
+        }
     }
     
     // Format file size in human-readable form
@@ -638,17 +702,42 @@ document.addEventListener('DOMContentLoaded', function() {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
     
-    // Show a toast notification
+    // Show a toast notification (Refined)
+    let toastTimeoutId = null; // Variable to hold the timeout ID
     function showToast(message, isError = false) {
+        if (!toast || !message) return; 
+
         toast.textContent = message;
-        toast.className = isError 
-            ? 'fixed bottom-4 right-4 toast-error px-4 py-2 rounded-md shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none' 
-            : 'fixed bottom-4 right-4 toast-success px-4 py-2 rounded-md shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none';
-        toast.classList.add('show');
+        // Base classes
+        toast.className = 'fixed bottom-4 right-4 px-4 py-2 rounded-md shadow-lg text-white transition-opacity duration-300 opacity-0 pointer-events-none'; 
         
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
+        // Apply color based on type
+        if (isError) {
+            toast.classList.add('bg-red-600'); 
+        } else {
+            toast.classList.add('bg-green-600'); 
+        }
+
+        // Clear previous timeout if exists (prevents overlapping toasts cutting each other short)
+        if (toastTimeoutId) {
+            clearTimeout(toastTimeoutId);
+        }
+
+        // Force reflow to ensure transition works after reapplying class
+        toast.offsetHeight; 
+
+        // Make visible
+        requestAnimationFrame(() => { // Use requestAnimationFrame for smoother transition start
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+        });
+
+        // Set timeout to hide
+        toastTimeoutId = setTimeout(() => {
+            toast.classList.remove('opacity-100');
+            toast.classList.add('opacity-0');
+            toastTimeoutId = null; // Clear the timeout ID
+        }, 3000); // Hide after 3 seconds
     }
     
     // Determine file type icon

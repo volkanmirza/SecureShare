@@ -78,6 +78,8 @@
                         </button>
                     </div>
                     <p id="status-sender" class="mt-2 text-sm"></p>
+                    <!-- Placeholder for the QR Code -->
+                    <div id="qrcode" class="mt-4 flex justify-center"></div>
                 </div>
             </section>
 
@@ -211,13 +213,15 @@
     </div>
 
     <footer class="mt-12 py-4 text-center text-sm">
-        <p data-i18n="footerText">SecureShare © 2023 | Uçtan uca şifreli, eşler arası dosya paylaşım uygulaması</p>
+        <p data-i18n="footerText">SecureShare © 2023 | Güvenli uçtan uca şifreli dosya paylaşımı</p>
     </footer>
 
     <div id="toast" class="fixed bottom-4 right-4 px-4 py-2 rounded-md shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none">
         Mesaj
     </div>
 
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="config.js"></script>
     <script src="client.js"></script>
 </body>
