@@ -74,7 +74,9 @@ wss.on('connection', (ws) => {
     
     let connectionId = generateUniqueId();
     let activeCode = null;
-    
+    let fileMetadata = null;
+    let receivedData = [];
+
     // Set a timeout to close inactive connections
     let timeout = setTimeout(() => {
         ws.close();
@@ -106,20 +108,20 @@ wss.on('connection', (ws) => {
                     // Join an existing share code
                     handleJoinCode(connectionId, data.code);
                     break;
-                    
-                case 'offer':
-                    // Forward the offer to the receiver
-                    forwardSignalingMessage(connectionId, 'offer', { offer: data.offer });
+
+                case 'public-key':
+                    console.log(`Forwarding public key from ${connectionId}`);
+                    forwardMessage(connectionId, 'public-key', data.key);
                     break;
-                    
-                case 'answer':
-                    // Forward the answer to the sender
-                    forwardSignalingMessage(connectionId, 'answer', { answer: data.answer });
+
+                case 'metadata':
+                    console.log('Encrypted metadata received, forwarding...');
+                    forwardMessage(connectionId, 'metadata', data.data);
                     break;
-                    
-                case 'ice-candidate':
-                    // Forward ICE candidates
-                    forwardSignalingMessage(connectionId, 'ice-candidate', { candidate: data.candidate });
+
+                case 'file-chunk':
+                    console.log('Encrypted file chunk received, forwarding...');
+                    forwardMessage(connectionId, 'file-chunk', data.data);
                     break;
                     
                 case 'download-complete':
@@ -236,44 +238,53 @@ wss.on('connection', (ws) => {
                 type: 'receiver-connected'
             }));
         }
-        
+
         // Confirm to the receiver
         ws.send(JSON.stringify({
             type: 'connected-to-sender'
         }));
     }
     
-    // Forward signaling messages between peers
-    function forwardSignalingMessage(fromConnectionId, messageType, data) {
+    // Forward messages between peers
+    function forwardMessage(fromConnectionId, messageType, data) {
         const connection = connections.get(fromConnectionId);
         
         if (!connection || !connection.activeCode) {
+            console.log(`Cannot forward: Connection ${fromConnectionId} not found or has no active code.`);
             return;
         }
         
         const codeInfo = codes.get(connection.activeCode);
         
         if (!codeInfo) {
+            console.log(`Cannot forward: Code info for ${connection.activeCode} not found.`);
             return;
         }
         
         // Determine the target connection ID
-        const targetConnectionId = (fromConnectionId === codeInfo.senderId) 
-            ? codeInfo.receiverId 
-            : codeInfo.senderId;
-        
-        if (!targetConnectionId) {
-            return;
+        let targetId = null;
+        if (codeInfo.senderId === fromConnectionId && codeInfo.receiverId) {
+            targetId = codeInfo.receiverId;
+        } else if (codeInfo.receiverId === fromConnectionId && codeInfo.senderId) {
+            targetId = codeInfo.senderId;
+        }
+
+        if (!targetId) {
+            console.log(`Cannot forward: Target ID not found for code ${connection.activeCode}.`);
+            return; // No target to forward to yet
         }
         
-        // Get the target connection and send the message
-        const targetConnection = connections.get(targetConnectionId);
-        
+        const targetConnection = connections.get(targetId);
         if (targetConnection && targetConnection.ws.readyState === WebSocket.OPEN) {
+            console.log(`Forwarding message type '${messageType}' from ${fromConnectionId} to ${targetId}`);
             targetConnection.ws.send(JSON.stringify({
                 type: messageType,
-                ...data
+                data: data
             }));
+        } else {
+            console.log(`Cannot forward: Target connection ${targetId} not found or not open.`);
+            // Optionally notify the sender that the recipient is disconnected?
+            // Or handle this via ws.on('close') cleanup.
         }
     }
     
@@ -282,15 +293,25 @@ wss.on('connection', (ws) => {
         const connection = connections.get(connectionId);
         
         if (!connection || !connection.activeCode) {
+            console.log(`Download complete signal from unknown/inactive connection ${connectionId}`);
             return;
         }
         
         const codeInfo = codes.get(connection.activeCode);
         
         if (!codeInfo) {
+            console.log(`Download complete signal for unknown code ${connection.activeCode}`);
             return;
         }
-        
+
+        // Ensure message is from the receiver
+        if (codeInfo.receiverId !== connectionId) {
+            console.warn(`Download complete signal received from sender (${connectionId}) instead of receiver for code ${connection.activeCode}. Ignoring.`);
+            return;
+        }
+
+        console.log(`Download complete for code ${connection.activeCode}, notifying sender ${codeInfo.senderId}`);
+
         // Notify the sender
         const sender = connections.get(codeInfo.senderId);
         if (sender && sender.ws.readyState === WebSocket.OPEN) {
@@ -298,23 +319,30 @@ wss.on('connection', (ws) => {
                 type: 'download-complete'
             }));
         }
-        
-        // Release the code
+
+        // Clean up the code immediately after completion notification
         releaseCode(connection.activeCode);
     }
     
     // Release a code
     function releaseCode(code) {
         if (codes.has(code)) {
-            console.log('Releasing code:', code);
+            const codeInfo = codes.get(code);
+            console.log(`Releasing code ${code}`);
+
+            // Clear activeCode from sender and receiver connections if they exist
+            const sender = connections.get(codeInfo.senderId);
+            if (sender && sender.activeCode === code) {
+                sender.activeCode = null;
+            }
+            const receiver = connections.get(codeInfo.receiverId);
+            if (receiver && receiver.activeCode === code) {
+                receiver.activeCode = null;
+            }
+
             codes.delete(code);
-            
-            // Update connections that were using this code
-            connections.forEach((conn) => {
-                if (conn.activeCode === code) {
-                    conn.activeCode = null;
-                }
-            });
+        } else {
+            console.log(`Attempted to release non-existent code: ${code}`);
         }
     }
 });

@@ -67,6 +67,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // WebSocket connection
     let socket = null;
+    let sharedKey = null; // <-- Add variable for shared secret key
+    let keyPair = null; // <-- Add variable for own key pair
     
     // WebRTC Variables
     let peerConnection = null;
@@ -92,6 +94,126 @@ document.addEventListener('DOMContentLoaded', function() {
         ? 'ws://' + location.host
         : 'wss://' + location.host;
     
+    // --- Start: Base64 Helper Functions ---
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+    }
+
+    function base64ToArrayBuffer(base64) {
+        const binary_string = window.atob(base64);
+        const len = binary_string.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binary_string.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+    // --- End: Base64 Helper Functions ---
+
+    // --- Start: Crypto Helper Functions ---
+    async function generateKeyPair() {
+        return await crypto.subtle.generateKey(
+            { name: "ECDH", namedCurve: "P-256" },
+            true, // exportable
+            ["deriveKey"]
+        );
+    }
+
+    async function exportPublicKey(key) {
+        const exported = await crypto.subtle.exportKey("spki", key);
+        return exported; // ArrayBuffer
+    }
+
+    async function importPublicKey(keyData) {
+        return await crypto.subtle.importKey(
+            "spki",
+            keyData,
+            { name: "ECDH", namedCurve: "P-256" },
+            true,
+            []
+        );
+    }
+
+    async function deriveSharedKey(privateKey, publicKey) {
+        return await crypto.subtle.deriveKey(
+            { name: "ECDH", public: publicKey },
+            privateKey,
+            { name: "AES-GCM", length: 256 },
+            true, // extractable
+            ["encrypt", "decrypt"]
+        );
+    }
+
+    async function encryptData(key, data) {
+        const iv = crypto.getRandomValues(new Uint8Array(12)); // AES-GCM recommended IV size
+        const encodedData = new TextEncoder().encode(JSON.stringify(data)); // Ensure data is ArrayBuffer
+        const ciphertext = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            encodedData
+        );
+        return { iv, ciphertext }; // Return both IV and ciphertext
+    }
+
+     async function encryptChunk(key, chunk) {
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        // chunk is already an ArrayBuffer from FileReader
+        const ciphertext = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            chunk
+        );
+        // Convert ArrayBuffers to something JSON serializable (e.g., base64 or array of numbers)
+         // Using Array.from to convert Uint8Array to a regular array
+        return { iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(ciphertext)) };
+    }
+
+    async function decryptData(key, iv, ciphertext) {
+        try {
+            // Convert iv and ciphertext back to ArrayBuffer/Uint8Array
+            const ivArray = new Uint8Array(iv);
+            const ciphertextArray = new Uint8Array(ciphertext);
+
+            const decryptedData = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: ivArray },
+                key,
+                ciphertextArray
+            );
+            const decodedText = new TextDecoder().decode(decryptedData);
+            return JSON.parse(decodedText);
+        } catch (error) {
+            console.error("Decryption failed:", error);
+            showToast(getTranslation('decryptionError'), true);
+            // Handle decryption error appropriately, e.g., close connection or request resend
+            resetUI(); // Example: Reset UI on decryption failure
+            return null; // Indicate failure
+        }
+    }
+     async function decryptChunk(key, iv, ciphertext) {
+        try {
+            const ivArray = new Uint8Array(iv);
+            const ciphertextArray = new Uint8Array(ciphertext);
+            const decryptedChunk = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: ivArray },
+                key,
+                ciphertextArray
+            );
+            return decryptedChunk; // Return ArrayBuffer
+        } catch (error) {
+            console.error("Chunk decryption failed:", error);
+            showToast(getTranslation('decryptionError'), true);
+             // Potentially add more robust error handling for chunk decryption failure
+            return null;
+        }
+    }
+    // --- End: Crypto Helper Functions ---
+    
     // Initialize WebSocket connection
     function initWebSocket() {
         if (socket !== null) {
@@ -104,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('WebSocket connection established');
         };
         
-        socket.onmessage = function(event) {
+        socket.onmessage = async function(event) { // <-- Make async
             const message = JSON.parse(event.data);
             
             switch (message.type) {
@@ -113,39 +235,184 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast(getTranslation('codeCreated'));
                     shareResult.classList.remove('hidden');
                     statusSender.textContent = getTranslation('waitingForReceiver');
+                    // Sender generates keys after code is created
+                    keyPair = await generateKeyPair();
+                    console.log("Sender keys generated.");
                     break;
                     
-                case 'receiver-connected':
-                    statusSender.textContent = getTranslation('receiverConnected');
-                    initiateWebRTCConnection();
+                case 'receiver-connected': // Received by sender
+                    statusSender.textContent = getTranslation('receiverConnectedInitiatingKeyExchange');
+                    // Sender exports and sends public key as Base64
+                     if (keyPair && keyPair.publicKey) {
+                        const exportedPublicKey = await exportPublicKey(keyPair.publicKey);
+                        const exportedPublicKeyBase64 = arrayBufferToBase64(exportedPublicKey); // <-- Convert to Base64
+                        console.log("Sender sending public key (Base64)");
+                        socket.send(JSON.stringify({
+                            type: 'public-key',
+                            key: exportedPublicKeyBase64 // <-- Send Base64 string
+                        }));
+                    } else {
+                         console.error("Sender key pair not ready.");
+                         showToast(getTranslation('keyGenerationError'), true);
+                         resetUI();
+                    }
                     break;
                     
-                case 'offer':
-                    handleOffer(message.offer);
+                case 'connected-to-sender': // Received by receiver
+                    downloadStatus.classList.remove('hidden');
+                    downloadMessage.textContent = getTranslation('connectedToSenderInitiatingKeyExchange');
+                    // Receiver generates keys and sends public key back as Base64
+                    keyPair = await generateKeyPair();
+                    console.log("Receiver keys generated.");
+                     if (keyPair && keyPair.publicKey) {
+                        const exportedPublicKey = await exportPublicKey(keyPair.publicKey);
+                        const exportedPublicKeyBase64 = arrayBufferToBase64(exportedPublicKey); // <-- Convert to Base64
+                        console.log("Receiver sending public key (Base64)");
+                        socket.send(JSON.stringify({
+                            type: 'public-key',
+                            key: exportedPublicKeyBase64 // <-- Send Base64 string
+                        }));
+                    } else {
+                         console.error("Receiver key pair not ready.");
+                         showToast(getTranslation('keyGenerationError'), true);
+                         resetUI();
+                     }
                     break;
-                    
-                case 'answer':
-                    handleAnswer(message.answer);
+
+                 case 'public-key': // Received by both sender and receiver
+                    console.log("Received public key (Base64) from peer.");
+                    try {
+                         // Correctly read the key from message.data as forwarded by the server
+                         const remotePublicKeyData = base64ToArrayBuffer(message.data); // <-- Change from message.key to message.data
+                         const remotePublicKey = await importPublicKey(remotePublicKeyData);
+
+                         if (keyPair && keyPair.privateKey && remotePublicKey) {
+                             sharedKey = await deriveSharedKey(keyPair.privateKey, remotePublicKey);
+                             console.log("Shared key derived successfully.");
+                             // Key exchange complete, proceed with file transfer initiation
+                              if (selectedFile) { // Sender: Start transfer if file is selected
+                                  statusSender.textContent = getTranslation('secureConnectionEstablishedSending');
+                                  initiateWebSocketFileTransfer();
+                              } else { // Receiver: Ready to receive metadata
+                                  downloadMessage.textContent = getTranslation('secureConnectionEstablishedWaiting');
+                              }
+                         } else {
+                             console.error("Could not derive shared key. Own keys or remote key missing/invalid.");
+                             showToast(getTranslation('keyExchangeError'), true);
+                             resetUI();
+                         }
+                     } catch (error) {
+                         console.error("Error processing received public key:", error);
+                         showToast(getTranslation('keyExchangeError'), true);
+                         resetUI();
+                     }
                     break;
-                    
-                case 'ice-candidate':
-                    handleIceCandidate(message.candidate);
-                    break;
-                    
+
                 case 'error':
                     showToast(message.message, true);
                     resetUI();
                     break;
-                    
-                case 'download-complete':
-                    if (statusSender) {
-                        statusSender.textContent = getTranslation('fileSuccessfullySent');
-                        setTimeout(() => {
-                            resetUI();
-                        }, 3000);
+
+                case 'metadata': // Needs decryption
+                    if (!sharedKey) {
+                        console.error("Received metadata but no shared key available.");
+                        showToast(getTranslation('keyExchangeError'), true);
+                        resetUI(); return;
+                    }
+                     console.log("Received encrypted metadata", message.data);
+                    const decryptedMetadata = await decryptData(sharedKey, message.data.iv, message.data.ciphertext);
+
+                    if (decryptedMetadata) {
+                        fileMetadata.name = decryptedMetadata.name;
+                        fileMetadata.size = decryptedMetadata.size;
+                        fileMetadata.type = decryptedMetadata.type;
+                        downloadMessage.textContent = getTranslation('receivingFile') + ' 0%';
+                        progressContainer.classList.remove('hidden');
+                        receivingInProgress = true;
+                        receivedData = []; // Reset received data
+                        receivedSize = 0; // Reset received size
+                         console.log("Decrypted metadata:", fileMetadata);
+                     } else {
+                        console.error("Failed to decrypt metadata.");
+                        // Error handling already in decryptData
                     }
                     break;
-                    
+
+                case 'file-chunk': // Needs decryption
+                    if (!receivingInProgress || !sharedKey) {
+                        console.warn('Received file chunk unexpectedly or without shared key.');
+                        return;
+                    }
+
+                     // Data contains { iv, ciphertext }
+                    const decryptedChunk = await decryptChunk(sharedKey, message.data.iv, message.data.ciphertext);
+
+                    if (decryptedChunk) {
+                        receivedData.push(new Uint8Array(decryptedChunk)); // Store decrypted chunk
+                        receivedSize += decryptedChunk.byteLength;
+
+                        const progress = Math.round((receivedSize / fileMetadata.size) * 100);
+                        downloadMessage.textContent = `${getTranslation('receivingFile')} ${progress}%`;
+                        progressBar.style.width = `${progress}%`;
+                        progressPercent.textContent = `${progress}%`;
+
+                        if (receivedSize >= fileMetadata.size) { // Use >= for safety
+                             console.log('File received successfully (decrypted)');
+                             // Ensure all data is processed if receivedSize slightly exceeds due to chunking
+                             if (receivedSize > fileMetadata.size) {
+                                 console.warn(`Received size (${receivedSize}) exceeds metadata size (${fileMetadata.size}). Trimming.`);
+                                 // This might require more complex logic if the last chunk needs trimming.
+                                 // For now, we assume the sender sends exactly fileMetadata.size bytes in total.
+                             }
+                             receivedSize = fileMetadata.size; // Correct the size if needed
+
+                            downloadMessage.textContent = getTranslation('fileReceived');
+                            downloadBtn.classList.remove('hidden');
+
+                            try {
+                                 console.log(`Creating Blob with type: ${fileMetadata.type}, size: ${receivedSize}`);
+                                 const blob = new Blob(receivedData, { type: fileMetadata.type || 'application/octet-stream' }); // Add fallback type
+                                 const url = window.URL.createObjectURL(blob);
+                                 console.log(`Blob URL created: ${url}`);
+                                 console.log(`Setting download button: href=${url}, download=${fileMetadata.name}`);
+                                 downloadBtn.href = url;
+                                 downloadBtn.download = fileMetadata.name;
+
+                                 // Store the URL to be revoked later
+                                 downloadBtn.dataset.blobUrl = url; // Use data attribute to store URL
+
+                             } catch(error) {
+                                 console.error("Error creating Blob or Object URL:", error);
+                                 showToast(getTranslation('downloadSetupError'), true);
+                                 resetUI();
+                                 return; // Stop further processing
+                             }
+
+                            receivingInProgress = false;
+
+                            // Notify sender that download is complete
+                            socket.send(JSON.stringify({ type: 'download-complete' }));
+                        }
+                     } else {
+                         console.error("Failed to decrypt chunk.");
+                         // Handle chunk decryption error - maybe request resend? For now, stop receiving.
+                         showToast(getTranslation('transferError'), true);
+                         resetUI();
+                    }
+                    break;
+
+                case 'download-complete': // Received by sender
+                     if (statusSender) {
+                         statusSender.textContent = getTranslation('fileSuccessfullySent');
+                         // Clean up keys?
+                         sharedKey = null;
+                         keyPair = null;
+                         setTimeout(() => {
+                            resetUI();
+                         }, 3000);
+                     }
+                     break;
+
                 default:
                     console.warn('Unknown message type:', message.type);
             }
@@ -153,11 +420,23 @@ document.addEventListener('DOMContentLoaded', function() {
         
         socket.onclose = function() {
             console.log('WebSocket connection closed');
+            // Clean up cryptographic keys on close/error
+             sharedKey = null;
+             keyPair = null;
+             if (!downloadBtn.classList.contains('hidden')) {
+                 // Don't reset if download is ready
+             } else {
+                 // resetUI(); // Avoid resetting if user is about to download
+             }
         };
         
         socket.onerror = function(error) {
             console.error('WebSocket error:', error);
             showToast(getTranslation('connectionError'), true);
+             // Clean up cryptographic keys on close/error
+             sharedKey = null;
+             keyPair = null;
+             resetUI();
         };
     }
     
@@ -180,286 +459,169 @@ document.addEventListener('DOMContentLoaded', function() {
             .substring(0, CODE_LENGTH)
             .toUpperCase();
     }
-    
-    // Setup WebRTC connection as sender
-    function initiateWebRTCConnection() {
-        createPeerConnection();
-        
-        // Create a data channel for file transfer
-        dataChannel = peerConnection.createDataChannel('fileTransfer');
-        setupDataChannel(dataChannel);
-        
-        // Create an offer to send to the receiver
-        peerConnection.createOffer()
-            .then(offer => {
-                return peerConnection.setLocalDescription(offer);
-            })
-            .then(() => {
-                // Send the offer to the signaling server
-                socket.send(JSON.stringify({
-                    type: 'offer',
-                    offer: peerConnection.localDescription
-                }));
-            })
-            .catch(error => {
-                console.error('Error creating offer:', error);
-                showToast(getTranslation('connectionError'), true);
-            });
-    }
-    
-    // Create and set up a new RTCPeerConnection
-    function createPeerConnection() {
-        const configuration = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
-        
-        peerConnection = new RTCPeerConnection(configuration);
-        
-        peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                socket.send(JSON.stringify({
-                    type: 'ice-candidate',
-                    candidate: event.candidate
-                }));
-            }
-        };
-        
-        peerConnection.ondatachannel = event => {
-            dataChannel = event.channel;
-            setupDataChannel(dataChannel);
-        };
-    }
-    
-    // Set up data channel event handlers
-    function setupDataChannel(channel) {
-        channel.binaryType = 'arraybuffer';
-        
-        channel.onopen = () => {
-            console.log('Data channel opened');
-            
-            if (channel.label === 'fileTransfer') {
-                if (selectedFile) {
-                    // Sender mode - send file metadata first
-                    statusSender.textContent = getTranslation('sendingFile') + ' 0%';
-                    
-                    const metadata = {
-                        name: selectedFile.name,
-                        size: selectedFile.size,
-                        type: selectedFile.type || 'application/octet-stream'
-                    };
-                    
-                    channel.send(JSON.stringify({
-                        type: 'metadata',
-                        data: metadata
-                    }));
-                    
-                    // Start sending the file after a short delay
-                    setTimeout(() => sendFile(), 100);
-                }
-            }
-        };
-        
-        channel.onclose = () => {
-            console.log('Data channel closed');
-        };
-        
-        channel.onerror = (error) => {
-            console.error('Data channel error:', error);
-        };
-        
-        channel.onmessage = (event) => {
-            if (typeof event.data === 'string') {
-                // Handle string messages (metadata or control messages)
-                try {
-                    const message = JSON.parse(event.data);
-                    
-                    if (message.type === 'metadata') {
-                        // Receiver mode - prepare to receive file
-                        fileMetadata = message.data;
-                        receivedSize = 0;
-                        receivedData = [];
-                        receivingInProgress = true;
-                        
-                        // Update UI
-                        downloadIcon.textContent = '📥';
-                        downloadMessage.textContent = getTranslation('receivingFile');
-                        fileInfo.textContent = `${fileMetadata.name} (${formatFileSize(fileMetadata.size)})`;
-                        progressContainer.classList.remove('hidden');
-                    }
-                } catch (error) {
-                    console.error('Error parsing message:', error);
-                }
-            } else {
-                // Handle binary data (file chunks)
-                if (receivingInProgress) {
-                    receivedData.push(event.data);
-                    receivedSize += event.data.byteLength;
-                    
-                    // Update progress
-                    const percentComplete = Math.round((receivedSize / fileMetadata.size) * 100);
-                    progressBar.style.width = `${percentComplete}%`;
-                    progressPercent.textContent = `${percentComplete}%`;
-                    
-                    // Check if file transfer is complete
-                    if (receivedSize === fileMetadata.size) {
-                        // File transfer complete
-                        receivingInProgress = false;
-                        
-                        // Prepare file for download
-                        const receivedBlob = new Blob(receivedData, { type: fileMetadata.type });
-                        const downloadUrl = URL.createObjectURL(receivedBlob);
-                        
-                        // Update UI
-                        downloadIcon.textContent = '✅';
-                        downloadMessage.textContent = getTranslation('transferComplete');
-                        downloadBtn.classList.remove('hidden');
-                        
-                        // Set up download button
-                        downloadBtn.onclick = () => {
-                            const a = document.createElement('a');
-                            a.href = downloadUrl;
-                            a.download = fileMetadata.name;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            
-                            // Notify sender that download is complete
-                            socket.send(JSON.stringify({
-                                type: 'download-complete'
-                            }));
-                            
-                            // Reset after a short delay
-                            setTimeout(() => {
-                                resetUI();
-                            }, 3000);
-                        };
-                    }
-                }
-            }
-        };
-    }
-    
-    // Handle an offer from the peer
-    function handleOffer(offer) {
-        createPeerConnection();
-        
-        peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
-            .then(() => peerConnection.createAnswer())
-            .then(answer => peerConnection.setLocalDescription(answer))
-            .then(() => {
-                socket.send(JSON.stringify({
-                    type: 'answer',
-                    answer: peerConnection.localDescription
-                }));
-            })
-            .catch(error => {
-                console.error('Error handling offer:', error);
-                showToast(getTranslation('connectionError'), true);
-            });
-    }
-    
-    // Handle an answer from the peer
-    function handleAnswer(answer) {
-        peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
-            .catch(error => {
-                console.error('Error handling answer:', error);
-                showToast(getTranslation('connectionError'), true);
-            });
-    }
-    
-    // Handle an ICE candidate from the peer
-    function handleIceCandidate(candidate) {
-        peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
-            .catch(error => {
-                console.error('Error adding ICE candidate:', error);
-            });
-    }
-    
-    // Send the selected file in chunks
-    function sendFile() {
-        if (!dataChannel || dataChannel.readyState !== 'open' || !selectedFile) {
+
+    // Setup WebSocket file transfer as sender
+    async function sendFile() { // <-- Make async
+        if (!socket || socket.readyState !== WebSocket.OPEN || !selectedFile || !sharedKey) {
+            console.error("Cannot send file: WebSocket not open, file not selected, or shared key not ready.");
+             if (!sharedKey) showToast(getTranslation('keyExchangeIncomplete'), true);
             return;
         }
-        
+
+        console.log("Starting encrypted file send...");
+        // 1. Send encrypted metadata first
+         const metadata = {
+            name: selectedFile.name,
+            size: selectedFile.size,
+            type: selectedFile.type || 'application/octet-stream'
+        };
+         try {
+             const encryptedMetadata = await encryptData(sharedKey, metadata);
+             console.log("Sending encrypted metadata:", encryptedMetadata);
+             socket.send(JSON.stringify({
+                 type: 'metadata',
+                 data: {
+                     iv: Array.from(encryptedMetadata.iv),
+                     ciphertext: Array.from(new Uint8Array(encryptedMetadata.ciphertext))
+                 }
+             }));
+         } catch (error) {
+             console.error("Error encrypting/sending metadata:", error);
+             showToast(getTranslation('encryptionError'), true);
+             resetUI();
+             return;
+         }
+
+
+        // 2. Send encrypted file chunks
         fileReader = new FileReader();
         let offset = 0;
-        
+        sendingProgress = 0; // Reset progress
+
         fileReader.addEventListener('error', error => {
             console.error('Error reading file:', error);
             showToast(getTranslation('fileReadError'), true);
+             resetUI(); // Reset on file read error
         });
-        
+
         fileReader.addEventListener('abort', () => {
             console.log('File reading aborted');
+             // Consider if resetUI() is needed here
         });
-        
-        fileReader.addEventListener('load', event => {
-            if (dataChannel.readyState === 'open') {
-                dataChannel.send(event.target.result);
-                offset += event.target.result.byteLength;
-                
-                // Update progress
-                sendingProgress = Math.round((offset / selectedFile.size) * 100);
-                statusSender.textContent = `${getTranslation('sendingFile')} ${sendingProgress}%`;
-                
-                // Check if there's more data to send
-                if (offset < selectedFile.size) {
-                    readSlice(offset);
-                }
-            }
+
+        fileReader.addEventListener('load', async (event) => { // <-- Make async
+            if (socket.readyState !== WebSocket.OPEN || !sharedKey) {
+                 console.warn("WebSocket closed or shared key lost during file read.");
+                 resetUI(); // Reset if connection lost during transfer
+                 return;
+             }
+
+            const chunk = event.target.result; // ArrayBuffer
+
+             try {
+                 const encryptedChunk = await encryptChunk(sharedKey, chunk);
+                 // console.log(`Sending encrypted chunk, offset: ${offset}, size: ${chunk.byteLength}`);
+
+                 socket.send(JSON.stringify({
+                     type: 'file-chunk',
+                     data: encryptedChunk // Already contains { iv, ciphertext (as array) }
+                 }));
+
+                 offset += chunk.byteLength;
+
+                 // Update progress
+                 sendingProgress = Math.round((offset / selectedFile.size) * 100);
+                 statusSender.textContent = `${getTranslation('sendingFile')} ${sendingProgress}%`;
+
+                 // Check if there's more data to send
+                 if (offset < selectedFile.size) {
+                     readNextChunk(offset);
+                 } else {
+                     console.log('Finished sending file chunks.');
+                     // statusSender.textContent = getTranslation('fileSentWaitingConfirmation'); // Wait for 'download-complete'
+                 }
+             } catch(error) {
+                  console.error("Error encrypting/sending chunk:", error);
+                  showToast(getTranslation('encryptionError'), true);
+                  resetUI();
+                  // Stop sending further chunks
+             }
         });
-        
-        const readSlice = o => {
-            const slice = selectedFile.slice(o, o + CHUNK_SIZE);
+
+        function readNextChunk(currentOffset) {
+            const slice = selectedFile.slice(currentOffset, currentOffset + CHUNK_SIZE);
             fileReader.readAsArrayBuffer(slice);
-        };
-        
-        readSlice(0);
+        }
+
+        // Start reading the first chunk
+        readNextChunk(offset);
+    }
+
+    // This function is now only called *after* key exchange is complete
+    function initiateWebSocketFileTransfer() {
+         if (selectedFile && sharedKey) {
+             console.log("Key exchange complete, initiating file transfer.");
+             sendFile(); // Call the async sendFile function
+         } else {
+             console.log("Key exchange complete, waiting for sender to initiate transfer.");
+             // Receiver side: We just wait for 'metadata' message
+         }
     }
     
     // Reset UI to initial state
     function resetUI() {
-        // Reset file upload UI
-        fileInput.value = '';
-        filePrompt.textContent = getTranslation('selectFilePrompt');
-        fileName.textContent = '';
-        fileSize.textContent = '';
-        fileName.classList.add('hidden');
-        fileSize.classList.add('hidden');
-        fileIcon.textContent = '📁';
-        shareBtn.disabled = true;
-        shareResult.classList.add('hidden');
-        statusSender.textContent = '';
-        
-        // Reset download UI
-        receiveCode.value = '';
-        downloadStatus.classList.add('hidden');
-        downloadIcon.textContent = '⏳';
-        downloadMessage.textContent = getTranslation('connecting');
-        progressContainer.classList.add('hidden');
-        downloadBtn.classList.add('hidden');
-        
-        // Reset variables
+        console.log("Resetting UI and state.");
+        // Reset file input and related UI
+        if (fileInput) fileInput.value = ''; // Clear file input
+        if (filePrompt) filePrompt.classList.remove('hidden');
+        if (fileName) fileName.textContent = '';
+        if (fileSize) fileSize.textContent = '';
+        if (fileIcon) fileIcon.className = 'fas fa-file-upload text-4xl text-gray-400';
+        if (dropZone) dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        if (shareBtn) shareBtn.disabled = true;
+        if (shareResult) shareResult.classList.add('hidden');
+        if (shareCode) shareCode.value = '';
+        if (statusSender) statusSender.textContent = '';
+
+        // Reset receiver UI elements
+        if (receiveCode) receiveCode.value = '';
+        if (receiveBtn) receiveBtn.disabled = false; // Re-enable receive button
+        if (downloadStatus) downloadStatus.classList.add('hidden');
+        if (downloadMessage) downloadMessage.textContent = '';
+        if (progressContainer) progressContainer.classList.add('hidden');
+        if (progressBar) progressBar.style.width = '0%';
+        if (progressPercent) progressPercent.textContent = '0%';
+        if (downloadBtn) {
+            downloadBtn.classList.add('hidden');
+            downloadBtn.href = '#'; // Clear previous download link
+            const oldUrl = downloadBtn.getAttribute('href');
+            if (oldUrl && oldUrl.startsWith('blob:')) {
+                window.URL.revokeObjectURL(oldUrl); // Revoke old blob URL
+            }
+        }
+
+        // Reset state variables
         selectedFile = null;
-        fileReader = null;
+        fileMetadata = { name: '', size: 0, type: '' };
+        if (fileReader) {
+            // Check readyState before aborting. 0 = EMPTY, 1 = LOADING, 2 = DONE
+            if (fileReader.readyState === 1) {
+                 fileReader.abort();
+            }
+            fileReader = null;
+        }
         receivedSize = 0;
         receivedData = [];
         sendingProgress = 0;
         receivingInProgress = false;
-        
-        // Close connections
-        if (dataChannel) {
-            dataChannel.close();
-            dataChannel = null;
-        }
-        
-        if (peerConnection) {
-            peerConnection.close();
-            peerConnection = null;
-        }
+
+        // Reset cryptographic state
+         sharedKey = null;
+         keyPair = null;
+
+        // Re-initialize WebSocket if necessary, or ensure it's ready
+        // initWebSocket(); // Be careful not to create rapid reconnect loops
+        console.log("UI and state reset complete.");
     }
     
     // Format file size in human-readable form
@@ -531,7 +693,7 @@ document.addEventListener('DOMContentLoaded', function() {
         this.classList.remove('drag-over');
         
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleFileSelect(e.dataTransfer.files[0]);
+            handleFileSelect(this.dataTransfer.files[0]);
         }
     });
     
@@ -558,6 +720,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         initWebSocket();
+        
+        initiateWebSocketFileTransfer();
         
         // Generate and send share code
         const code = generateSecureCode();
@@ -600,7 +764,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         initWebSocket();
-        downloadStatus.classList.remove('hidden');
         
         // Wait for socket to be ready
         const waitForSocketConnection = callback => {
@@ -622,4 +785,53 @@ document.addEventListener('DOMContentLoaded', function() {
             }));
         });
     });
+
+    // Initialize WebSocket on load
+    initWebSocket();
+
+     // Initial UI state reset
+     resetUI();
+
+    // Apply translations if config is loaded - Commented out temporarily
+    // if (window.appConfig) {
+    //    window.appConfig.applyTranslations(); // Apply translations on load
+    //    updateThemeIcon(); // Set initial theme icon
+    // } else {
+    //    console.warn("appConfig not found. UI features might be limited.");
+    // }
+
+    // Initialize UI elements based on settings - simplified check
+     if (window.appConfig && typeof window.appConfig.initializeSettings === 'function') {
+         window.appConfig.initializeSettings(); // Still try to initialize settings
+         updateThemeIcon(); // Set initial theme icon
+     } else {
+          console.warn("appConfig or initializeSettings not found. UI features might be limited.");
+     }
+
+     // Move download button listener inside DOMContentLoaded
+     if (downloadBtn) {
+        downloadBtn.addEventListener('click', (event) => {
+            // Allow the default download behavior
+            showToast(getTranslation('downloadStarting'));
+
+            // --- TEMPORARY TEST --- 
+            // Comment out the cleanup logic to see if it interferes with the download
+            /*
+            // Revoke the Object URL *after* the download link click has been processed
+            // Use a small timeout to ensure the browser has initiated the download.
+            const urlToRevoke = downloadBtn.dataset.blobUrl; 
+            console.log(`Download clicked. Scheduling revoke for URL: ${urlToRevoke}`);
+            setTimeout(() => {
+                if (urlToRevoke) {
+                    window.URL.revokeObjectURL(urlToRevoke);
+                    console.log(`Blob URL revoked: ${urlToRevoke}`);
+                    downloadBtn.dataset.blobUrl = ''; // Clear the data attribute
+                }
+                // Reset UI after download starts and URL is revoked
+                // resetUI(); // Temporarily disable UI reset as well
+            }, 100); // Short delay is usually sufficient
+            */
+           console.log("Download clicked. Cleanup logic temporarily disabled for testing.");
+        });
+    }
 });
