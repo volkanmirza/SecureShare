@@ -6,9 +6,9 @@ const path = require('path');
 const url = require('url');
 
 // --- SSL Certificate Configuration ---
-const certsPath = './certs'; // Directory for certificates
-const keyPath = path.join(certsPath, 'private.key');
-const certPath = path.join(certsPath, 'certificate.crt');
+const certsPath = '/etc/ssl/foxfile.org'; // Directory for certificates
+const keyPath = path.join(certsPath, 'foxfile.org.key');
+const certPath = path.join(certsPath, 'foxfile.org.crt');
 
 let options = {};
 try {
