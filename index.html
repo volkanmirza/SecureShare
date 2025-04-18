@@ -4,6 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SecureShare - E2E Encrypted P2P File Sharing</title>
+
+    <!-- Theme initialization script to prevent FOUC -->
+    <script>
+      (function() {
+        let theme = 'light'; // Default theme
+        try {
+          const storedTheme = localStorage.getItem('preferredTheme');
+          if (storedTheme) {
+            theme = storedTheme;
+          } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            theme = 'dark'; // Check system preference
+          }
+        } catch (e) {
+          console.error("Error reading theme preference:", e);
+        }
+        // Apply the theme attribute immediately
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -21,7 +41,10 @@
 
     <div class="container mx-auto px-4 py-8">
         <header class="mb-10 text-center">
-            <h1 class="text-4xl font-bold mb-2" data-i18n="appTitle">SecureShare</h1>
+            <h1 class="text-4xl font-bold mb-2 flex items-center justify-center">
+                <i class="fas fa-user-shield mr-3"></i>
+                <span data-i18n="appTitle">SecureShare</span>
+            </h1>
             <p class="text-lg" data-i18n="appDescription">Uçtan uca şifreli eşler arası dosya paylaşımı</p>
         </header>
 
@@ -172,16 +195,17 @@
                         <i class="fas fa-network-wired"></i>
                     </div>
                     <h3 class="text-lg font-medium mb-2" data-i18n="principleTitle">Çalışma Prensibi</h3>
-                    <p data-i18n="principleText">WebRTC ile eşler arası bağlantı kurulur. WebSocket tabanlı bir sinyal sunucusu sadece iki taraf arasındaki ilk bağlantı kurulumuna aracılık eder.</p>
+                    <p data-i18n="principleText">You connect securely to our server to find the other person using the share code. Once connected, the server helps relay the encrypted file data directly between you and the receiver.</p>
                 </div>
                 
+                <!-- Uncomment the Technologies feature card -->
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-code"></i>
                     </div>
-                    <h3 class="text-lg font-medium mb-2" data-i18n="technologiesTitle">Teknolojiler</h3>
-                    <p data-i18n="technologiesText">HTML5, Tailwind CSS, Vanilla JavaScript, WebRTC, WebSocket, Node.js teknolojileri kullanılarak geliştirilmiş, modern ve güvenli bir dosya paylaşım uygulamasıdır.</p>
-                </div>
+                    <h3 class="text-lg font-medium mb-2" data-i18n="technologiesTitle">Technologies</h3>
+                    <p data-i18n="technologiesText">Built with HTML5, Tailwind CSS, and Vanilla JavaScript. Uses Node.js with WebSocket for signaling and data relay, and the Web Crypto API for secure end-to-end encryption.</p>
+                </div> 
             </div>
         </section>
     </div>

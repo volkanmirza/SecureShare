@@ -442,12 +442,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Get translation based on current language
     function getTranslation(key) {
-        if (!window.appConfig) return '';
+        // Ensure appConfig and translations are loaded
+         if (!window.appConfig || !window.appConfig.translations) {
+             console.warn('Translations not available yet.');
+             return key; // Return the key itself as fallback
+         }
         
         const currentLang = localStorage.getItem('preferredLanguage') || 
-                           window.appConfig.getPreferredLanguage();
+                           window.appConfig.getPreferredLanguage(); // Use the exposed function
         
-        return window.appConfig.translations[currentLang][key] || key;
+         // Access translations via window.appConfig
+         return window.appConfig.translations[currentLang]?.[key] || key; // Use optional chaining and return key as fallback
     }
     
     // Create a secure random code
@@ -792,46 +797,35 @@ document.addEventListener('DOMContentLoaded', function() {
      // Initial UI state reset
      resetUI();
 
-    // Apply translations if config is loaded - Commented out temporarily
-    // if (window.appConfig) {
-    //    window.appConfig.applyTranslations(); // Apply translations on load
-    //    updateThemeIcon(); // Set initial theme icon
-    // } else {
-    //    console.warn("appConfig not found. UI features might be limited.");
-    // }
-
-    // Initialize UI elements based on settings - simplified check
+    // Initialize settings (which includes applying initial language/translations)
      if (window.appConfig && typeof window.appConfig.initializeSettings === 'function') {
-         window.appConfig.initializeSettings(); // Still try to initialize settings
+         window.appConfig.initializeSettings(); // This will call setLanguage internally
          updateThemeIcon(); // Set initial theme icon
      } else {
-          console.warn("appConfig or initializeSettings not found. UI features might be limited.");
+          console.warn("appConfig or initializeSettings function not found. Skipping settings initialization.");
      }
 
      // Move download button listener inside DOMContentLoaded
      if (downloadBtn) {
-        downloadBtn.addEventListener('click', (event) => {
-            // Allow the default download behavior
-            showToast(getTranslation('downloadStarting'));
+         downloadBtn.addEventListener('click', (event) => {
+             // Allow the default download behavior
+             showToast(getTranslation('downloadStarting'));
 
-            // --- TEMPORARY TEST --- 
-            // Comment out the cleanup logic to see if it interferes with the download
-            /*
-            // Revoke the Object URL *after* the download link click has been processed
-            // Use a small timeout to ensure the browser has initiated the download.
-            const urlToRevoke = downloadBtn.dataset.blobUrl; 
-            console.log(`Download clicked. Scheduling revoke for URL: ${urlToRevoke}`);
-            setTimeout(() => {
-                if (urlToRevoke) {
-                    window.URL.revokeObjectURL(urlToRevoke);
-                    console.log(`Blob URL revoked: ${urlToRevoke}`);
-                    downloadBtn.dataset.blobUrl = ''; // Clear the data attribute
-                }
-                // Reset UI after download starts and URL is revoked
-                // resetUI(); // Temporarily disable UI reset as well
-            }, 100); // Short delay is usually sufficient
-            */
-           console.log("Download clicked. Cleanup logic temporarily disabled for testing.");
+             // --- TEMPORARY TEST --- 
+             // Cleanup logic is currently disabled for testing
+             /*
+             const urlToRevoke = downloadBtn.dataset.blobUrl; 
+             console.log(`Download clicked. Scheduling revoke for URL: ${urlToRevoke}`);
+             setTimeout(() => {
+                 if (urlToRevoke) {
+                     window.URL.revokeObjectURL(urlToRevoke);
+                     console.log(`Blob URL revoked: ${urlToRevoke}`);
+                     downloadBtn.dataset.blobUrl = ''; // Clear the data attribute
+                 }
+                 // resetUI(); // Temporarily disable UI reset as well
+             }, 100); 
+             */
+            console.log("Download clicked. Cleanup logic temporarily disabled for testing.");
         });
     }
 });

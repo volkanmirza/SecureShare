@@ -5,7 +5,7 @@ const translations = {
     en: {
         // Header
         "appTitle": "SecureShare",
-        "appDescription": "End-to-end encrypted peer-to-peer file sharing",
+        "appDescription": "Secure end-to-end encrypted file sharing",
         
         // Upload section
         "shareFile": "Share File",
@@ -39,11 +39,11 @@ const translations = {
         "step4Title": "4. Secure Transfer",
         "step4Text": "The file is transferred directly to the receiver with encryption.",
         "securityTitle": "Security",
-        "securityText": "Files are transferred with end-to-end encryption over WebRTC's DTLS protocol. File contents never reach servers, they are sent directly to the receiver.",
+        "securityText": "Your files are securely encrypted directly in your browser before sending. Only the intended receiver can decrypt them. Even our server cannot see the content of your files.",
         "principleTitle": "Working Principle",
-        "principleText": "Peer-to-peer connection is established with WebRTC. A WebSocket-based signaling server only mediates the initial connection setup between the two parties.",
-        "technologiesTitle": "Technologies",
-        "technologiesText": "A modern and secure file sharing application developed using HTML5, Tailwind CSS, Vanilla JavaScript, WebRTC, WebSocket, and Node.js technologies.",
+        "principleText": "You connect securely to our server to find the other person using the share code. Once connected, the server helps relay the encrypted file data directly between you and the receiver.",
+        "technologiesTitle": "Technologies Used",
+        "technologiesText": "Built with HTML5, Tailwind CSS, and Vanilla JavaScript. Uses Node.js with WebSocket for signaling and data relay, and the Web Crypto API for secure end-to-end encryption.",
         
         // Footer
         "footerText": "SecureShare © 2023 | End-to-end encrypted, peer-to-peer file sharing application",
@@ -59,7 +59,7 @@ const translations = {
     tr: {
         // Header
         "appTitle": "SecureShare",
-        "appDescription": "Uçtan uca şifreli eşler arası dosya paylaşımı",
+        "appDescription": "Güvenli uçtan uca şifreli dosya paylaşımı",
         
         // Upload section
         "shareFile": "Dosya Paylaş",
@@ -93,11 +93,11 @@ const translations = {
         "step4Title": "4. Güvenli Transfer",
         "step4Text": "Dosya şifreli olarak doğrudan alıcıya aktarılır.",
         "securityTitle": "Güvenlik",
-        "securityText": "Dosyalar uçtan uca şifreli olarak, WebRTC'nin sağladığı DTLS protokolü üzerinden aktarılır. Dosya içeriği asla sunuculara ulaşmaz, doğrudan alıcıya gönderilir.",
+        "securityText": "Dosyalarınız gönderilmeden önce doğrudan tarayıcınızda güvenli bir şekilde şifrelenir. Sadece hedef alıcı şifreyi çözebilir. Sunucumuz bile dosyalarınızın içeriğini göremez.",
         "principleTitle": "Çalışma Prensibi",
-        "principleText": "WebRTC ile eşler arası bağlantı kurulur. WebSocket tabanlı bir sinyal sunucusu sadece iki taraf arasındaki ilk bağlantı kurulumuna aracılık eder.",
-        "technologiesTitle": "Teknolojiler",
-        "technologiesText": "HTML5, Tailwind CSS, Vanilla JavaScript, WebRTC, WebSocket, Node.js teknolojileri kullanılarak geliştirilmiş, modern ve güvenli bir dosya paylaşım uygulamasıdır.",
+        "principleText": "Paylaşım kodunu kullanarak diğer kişiyi bulmak için sunucumuza güvenli bir şekilde bağlanırsınız. Bağlantı kurulduktan sonra, sunucu şifrelenmiş dosya verisini sizinle alıcı arasında doğrudan iletmeye yardımcı olur.",
+        "technologiesTitle": "Kullanılan Teknolojiler",
+        "technologiesText": "HTML5, Tailwind CSS ve Vanilla JavaScript ile geliştirilmiştir. Sinyalleşme ve veri aktarımı için WebSocket ile Node.js, güvenli uçtan uca şifreleme için Web Crypto API kullanır.",
         
         // Footer
         "footerText": "SecureShare © 2023 | Uçtan uca şifreli, eşler arası dosya paylaşım uygulaması",
@@ -248,7 +248,7 @@ function initializeSettings() {
     }
 }
 
-// Export configuration
+// Expose functions and data to the global scope via window.appConfig
 window.appConfig = {
     translations,
     themes,

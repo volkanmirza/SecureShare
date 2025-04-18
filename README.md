@@ -1,30 +1,34 @@
 # SecureShare
 
-SecureShare is an end-to-end encrypted peer-to-peer file sharing application that allows users to securely transfer files directly between browsers without storing them on any server.
+SecureShare is a secure, end-to-end encrypted file sharing application that allows users to transfer files directly between browsers using WebSocket for signaling and data relay.
 
 ## Features
 
-- **End-to-End Encryption**: Files are transferred with end-to-end encryption over WebRTC's DTLS protocol
-- **Direct P2P Transfer**: File contents never reach servers, they are sent directly to the receiver
-- **No File Size Limits**: Transfer files of any size (limited only by browser memory)
-- **No Registration Required**: Simple share code system for connecting peers
-- **Multiple Language Support**: Available in English and Turkish
-- **Dark/Light Theme**: Supports both dark and light themes
-- **Responsive Design**: Works on desktop and mobile devices
+- **End-to-End Encryption**: Files are encrypted in the sender's browser using the Web Crypto API (AES-GCM) and decrypted only in the receiver's browser. The server cannot access the file contents.
+- **Server-Relayed Transfer**: File data is relayed through a WebSocket server, but remains encrypted end-to-end.
+- **No File Size Limits**: Transfer files of any size (limited only by browser memory and server resources).
+- **No Registration Required**: Simple share code system for connecting users.
+- **Multiple Language Support**: Available in English and Turkish.
+- **Dark/Light Theme**: Supports both dark and light themes based on system preference or manual toggle.
+- **Responsive Design**: Works on desktop and mobile devices.
 
 ## Technologies Used
 
 - **Frontend**: HTML5, Tailwind CSS, Vanilla JavaScript
-- **Communication**: WebRTC, WebSocket
+- **Encryption**: Web Crypto API (ECDH for key exchange, AES-GCM for encryption)
+- **Communication**: WebSocket (via ws library)
 - **Backend**: Node.js
-- **No Database**: No file storage or user data is stored on the server
+- **No File Storage**: Files are relayed in chunks and not stored on the server.
 
 ## How It Works
 
-1. **File Selection**: The sender selects a file and a share code is generated
-2. **Code Sharing**: The sender shares the code with the receiver through any communication channel (messaging, email, etc.)
-3. **Connection**: The receiver enters the code and a secure WebRTC connection is established
-4. **Secure Transfer**: The file is transferred directly to the receiver with encryption
+1.  **File Selection**: The sender selects a file.
+2.  **Code Generation**: A unique, random share code is generated for the sender.
+3.  **Code Sharing**: The sender shares this code with the receiver through any communication channel.
+4.  **Connection**: The receiver enters the code. Both sender and receiver connect to the WebSocket server.
+5.  **Key Exchange**: An ECDH key exchange happens over WebSocket (relayed by the server) to establish a shared secret key between the sender and receiver.
+6.  **Encrypted Transfer**: The sender encrypts the file metadata and then the file chunks using the shared key and sends them via WebSocket. The server relays the encrypted data to the receiver.
+7.  **Decryption & Download**: The receiver decrypts the metadata and file chunks using the shared key and constructs the file for download.
 
 ## Installation
 
@@ -35,44 +39,45 @@ SecureShare is an end-to-end encrypted peer-to-peer file sharing application tha
 
 ### Setup
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/secureshare.git
-   cd secureshare
-   ```
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/yourusername/secureshare.git # Replace with your actual repo URL
+    cd secureshare
+    ```
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
 
-3. Start the server:
-   ```bash
-   npm start
-   ```
+3.  Start the server:
+    ```bash
+    node server.js
+    ```
+    (Alternatively, if you have `nodemon` installed for development: `nodemon server.js`)
 
-4. Access the application:
-   Open your browser and navigate to `http://localhost:3000`
+4.  Access the application:
+    Open your browser and navigate to `http://localhost:3000`
 
 ### Docker Installation
 
 You can also run SecureShare using Docker:
 
-1. Build and start the container:
-   ```bash
-   docker-compose up -d
-   ```
+1.  Build and start the container:
+    ```bash
+    docker-compose up -d
+    ```
 
-2. Access the application:
-   Open your browser and navigate to `http://localhost:3000`
+2.  Access the application:
+    Open your browser and navigate to `http://localhost:3000`
 
 ## Security
 
-- WebRTC connections are secured with DTLS-SRTP
-- The signaling server only facilitates the initial connection setup
-- All file data is transferred directly between peers
-- No data is stored on any server
-- File contents are never exposed to the server
+- **End-to-End Encryption**: File content is encrypted using AES-GCM with a key derived via ECDH, ensuring only the sender and receiver can decrypt it.
+- **Secure Key Exchange**: ECDH provides forward secrecy for the shared encryption key.
+- **Server Cannot Decrypt**: The WebSocket server only relays encrypted data and cannot decrypt the file content.
+- **No Persistent Storage**: Files and encryption keys are not stored on the server.
+- **HTTPS Recommended**: For production deployment, running the server behind a reverse proxy with HTTPS is strongly recommended to encrypt the WebSocket signaling traffic itself.
 
 ## License
 
