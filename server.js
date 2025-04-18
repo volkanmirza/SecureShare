@@ -1,12 +1,37 @@
 // server.js
-const http = require('http');
+const https = require('https');
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
-// Simple HTTP server to serve static files
-const server = http.createServer((req, res) => {
+// --- SSL Certificate Configuration ---
+const certsPath = './certs'; // Directory for certificates
+const keyPath = path.join(certsPath, 'private.key');
+const certPath = path.join(certsPath, 'certificate.crt');
+
+let options = {};
+try {
+    options = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath)
+    };
+} catch (error) {
+    console.error("\n!!! SSL Sertifika Dosyaları Okunamadı !!!");
+    console.error(`Lütfen '${keyPath}' ve '${certPath}' dosyalarının mevcut ve okunabilir olduğundan emin olun.`);
+    console.error("Uygulama HTTP modunda 3000 portunda başlatılacak.\n");
+    // Fallback to HTTP if certs are not found/readable
+    options = null; 
+}
+// --- End SSL Configuration ---
+
+// Create server (HTTPS if certs loaded, otherwise HTTP)
+const server = options 
+    ? https.createServer(options, handleRequest) 
+    : require('http').createServer(handleRequest);
+
+// Request handler function (extracted for clarity)
+function handleRequest(req, res) {
     const parsedUrl = url.parse(req.url);
     let filePath = '.' + parsedUrl.pathname;
     
@@ -51,12 +76,17 @@ const server = http.createServer((req, res) => {
             res.end(content, 'utf-8');
         }
     });
-});
+}
 
-// Set the port
-const PORT = process.env.PORT || 3000;
+// Set the port (Use 443 for HTTPS if available, else 3000 for HTTP fallback)
+const PORT = options ? (process.env.PORT || 443) : (process.env.PORT || 3000);
+const protocol = options ? 'https' : 'http';
+
 server.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}/`);
+    console.log(`Server running at ${protocol}://localhost:${PORT}/`);
+    if (!options) {
+        console.log("(SSL sertifikaları yüklenemediği için HTTP modunda çalışıyor)");
+    }
 });
 
 // WebSocket server for signaling
