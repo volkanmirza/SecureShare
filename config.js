@@ -4,7 +4,7 @@
 const translations = {
     en: {
         // Header
-        "appTitle": "foxfile.net",
+        "appTitle": "foxfile.org",
         "appDescription": "Secure end-to-end encrypted file sharing.",
         
         // Upload section
@@ -42,11 +42,11 @@ const translations = {
         "securityText": "Your files are securely encrypted directly in your browser before sending. Only the intended receiver can decrypt them. Even our server cannot see the content of your files. We don't handle your files; we provide end-to-end encrypted transfer.",
         "principleTitle": "Working Principle",
         "principleText": "You connect securely to our server to find the other person using the share code. Once connected, the server helps relay the encrypted file data directly between you and the receiver.",
-        "technologiesTitle": "Technologies Used",
-        "technologiesText": "Built with HTML5, Tailwind CSS, and Vanilla JavaScript. Uses Node.js with WebSocket for signaling and data relay, and the Web Crypto API for secure end-to-end encryption.",
+        "technologiesTitle": "Why Donation is Needed?",
+        "technologiesText": "FoxFile is developed by an independent developer and is completely free. We need your support to cover server costs and keep the project sustainable.",
         
         // Footer
-        "footerText": "foxfile.net © 2023 | End-to-end encrypted, peer-to-peer file sharing application",
+        "footerText": "foxfile.org © 2025 | End-to-end encrypted, peer-to-peer file sharing application",
         
         // Notifications
         "codeCopied": "Code copied",
@@ -79,11 +79,14 @@ const translations = {
         "successTitle": "Success!",
         "okButton": "OK",
         // Donation Button
-        "donateButton": "Support Us"
+        "donateButton": "Support Us",
+        "donateTooltipTitle": "If You Love This Project, You Can Support It!",
+        "donateTooltipLine1": "FoxFile is developed by an independent developer and is completely free.",
+        "donateTooltipLine2": "We need your support to cover server costs and keep the project sustainable."
     },
     tr: {
         // Header
-        "appTitle": "foxfile.net",
+        "appTitle": "foxfile.org",
         "appDescription": "Güvenli uçtan uca şifreli dosya paylaşımı.",
         
         // Upload section
@@ -121,11 +124,11 @@ const translations = {
         "securityText": "Dosyalarınız gönderilmeden önce doğrudan tarayıcınızda güvenli bir şekilde şifrelenir. Sadece hedef alıcı şifreyi çözebilir. Sunucumuz bile dosyalarınızın içeriğini göremez. Dosyalarınızla ilgilenmiyoruz, size uçtan uca şifreli gönderim imkanı sunuyoruz.",
         "principleTitle": "Çalışma Prensibi",
         "principleText": "Paylaşım kodunu kullanarak diğer kişiyi bulmak için sunucumuza güvenli bir şekilde bağlanırsınız. Bağlantı kurulduktan sonra, sunucu şifrelenmiş dosya verisini sizinle alıcı arasında doğrudan iletmeye yardımcı olur.",
-        "technologiesTitle": "Kullanılan Teknolojiler",
-        "technologiesText": "HTML5, Tailwind CSS ve Vanilla JavaScript ile geliştirilmiştir. Sinyalleşme ve veri aktarımı için WebSocket ile Node.js, güvenli uçtan uca şifreleme için Web Crypto API kullanır.",
+        "technologiesTitle": "Neden Bağış Gerekli?",
+        "technologiesText": "FoxFile, bağımsız bir geliştirici tarafından geliştirilmiştir ve tamamen ücretsizdir. Sunucu maliyetlerini karşılamak ve projeyi sürdürülebilir kılmak için desteğinize ihtiyacımız var.",
         
         // Footer
-        "footerText": "foxfile.net © 2023 | Uçtan uca şifreli, eşler arası dosya paylaşım uygulaması",
+        "footerText": "foxfile.org © 2025 | Uçtan uca şifreli, eşler arası dosya paylaşım uygulaması",
         
         // Notifications
         "codeCopied": "Kod kopyalandı",
@@ -158,7 +161,10 @@ const translations = {
         "successTitle": "Başarılı!",
         "okButton": "Tamam",
         // Donation Button (Turkish)
-        "donateButton": "Destek Ol"
+        "donateButton": "Destek Ol",
+        "donateTooltipTitle": "Bu Projeyi Sevdiysen Destek Olabilirsin!",
+        "donateTooltipLine1": "FoxFile, bağımsız bir geliştirici tarafından geliştirilmiştir ve tamamen ücretsizdir.",
+        "donateTooltipLine2": "Sunucu maliyetlerini karşılamak ve projeyi sürdürülebilir kılmak için desteğinize ihtiyacımız var."
     }
 };
 

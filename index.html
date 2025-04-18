@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>foxfile.net - E2E Encrypted P2P File Sharing</title>
+    <title>foxfile.org - E2E Encrypted P2P File Sharing</title>
 
     <!-- Theme initialization script to prevent FOUC -->
     <script>
@@ -31,9 +31,19 @@
 <body>
     <!-- Settings toggles -->
     <div class="settings-container">
-        <a id="donate-btn" href="https://buymeacoffee.com/vmirza" target="_blank" rel="noopener noreferrer" class="toggle-btn" title="Support Us">
-            <i class="fas fa-coffee text-red-500"></i>
-        </a>
+        <!-- Donate Button with Tooltip -->
+        <div class="relative group">
+            <a id="donate-btn" href="https://buymeacoffee.com/vmirza" target="_blank" rel="noopener noreferrer" class="toggle-btn">
+                <i class="fas fa-coffee text-red-500"></i>
+            </a>
+            <!-- Tooltip -->
+            <div id="donate-tooltip" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-gray-800 text-white text-xs rounded-md p-3 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-300 pointer-events-none z-10">
+                <p class="font-semibold mb-1" data-i18n="donateTooltipTitle"></p>
+                <p data-i18n="donateTooltipLine1"></p> 
+                <p data-i18n="donateTooltipLine2"></p>
+                <svg class="absolute text-gray-800 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255" xml:space="preserve"><polygon class="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+            </div>
+        </div>
         <button id="language-toggle" class="toggle-btn" title="Toggle Language">
             <i class="fas fa-language"></i>
         </button>
@@ -206,20 +216,20 @@
                     <p data-i18n="principleText">You connect securely to our server to find the other person using the share code. Once connected, the server helps relay the encrypted file data directly between you and the receiver.</p>
                 </div>
                 
-                <!-- Uncomment the Technologies feature card -->
-                <div class="feature-card">
+                <!-- Feature: Why Donation is Needed -->
+                <a href="https://buymeacoffee.com/vmirza" target="_blank" rel="noopener noreferrer" class="block feature-card cursor-pointer">
                     <div class="feature-icon">
-                        <i class="fas fa-code"></i>
+                        <i class="fas fa-hand-holding-heart"></i>
                     </div>
-                    <h3 class="text-lg font-medium mb-2" data-i18n="technologiesTitle">Technologies</h3>
-                    <p data-i18n="technologiesText">Built with HTML5, Tailwind CSS, and Vanilla JavaScript. Uses Node.js with WebSocket for signaling and data relay, and the Web Crypto API for secure end-to-end encryption.</p>
-                </div> 
+                    <h3 class="text-lg font-medium mb-2" data-i18n="technologiesTitle"></h3>
+                    <p data-i18n="technologiesText"></p>
+                </a> 
             </div>
         </section>
     </div>
 
     <footer class="mt-12 py-4 text-center text-sm">
-        <p data-i18n="footerText">SecureShare © 2023 | Güvenli uçtan uca şifreli dosya paylaşımı</p>
+        <p data-i18n="footerText">SecureShare © 2025 | Güvenli uçtan uca şifreli dosya paylaşımı</p>
     </footer>
 
     <div id="toast" class="fixed bottom-4 right-4 px-4 py-2 rounded-md shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none">
