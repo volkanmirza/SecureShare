@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  secureshare:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: secureshare
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000

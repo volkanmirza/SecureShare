@@ -1,0 +1,381 @@
+/* Base custom styles */
+:root {
+    /* Default light theme variables - will be overridden by JS */
+    --backgroundColor: #f9fafb;
+    --cardBackgroundColor: #ffffff;
+    --textColor: #111827;
+    --secondaryTextColor: #4b5563;
+    --accentColor: #4f46e5;
+    --accentHoverColor: #4338ca;
+    --borderColor: #e5e7eb;
+    --inputBackgroundColor: #f9fafb;
+    --successColor: #10b981;
+    --successHoverColor: #059669;
+    --errorColor: #ef4444;
+    --infoBackgroundColor: #f3f4f6;
+    
+    /* Animation durations */
+    --transitionSpeed: 0.2s;
+}
+
+/* Apply theme colors */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
+    color: var(--textColor);
+    background-color: var(--backgroundColor);
+    transition: background-color var(--transitionSpeed) ease, color var(--transitionSpeed) ease;
+}
+
+/* Header styles */
+header h1 {
+    color: var(--accentColor);
+    transition: color var(--transitionSpeed) ease;
+}
+
+header p {
+    color: var(--secondaryTextColor);
+    transition: color var(--transitionSpeed) ease;
+}
+
+/* Card styles */
+.card {
+    background-color: var(--cardBackgroundColor);
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: background-color var(--transitionSpeed) ease, transform var(--transitionSpeed) ease, box-shadow var(--transitionSpeed) ease;
+}
+
+.card:hover {
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.card h2, .card h3 {
+    color: var(--textColor);
+    transition: color var(--transitionSpeed) ease;
+}
+
+/* Info card styles */
+.info-card {
+    background-color: var(--infoBackgroundColor);
+    border-radius: 0.5rem;
+    transition: background-color var(--transitionSpeed) ease;
+}
+
+.info-card h3 {
+    color: var(--accentColor);
+    transition: color var(--transitionSpeed) ease;
+}
+
+.info-card p {
+    color: var(--secondaryTextColor);
+    transition: color var(--transitionSpeed) ease;
+}
+
+/* Button styles */
+.btn {
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: background-color var(--transitionSpeed) ease, transform var(--transitionSpeed) ease, box-shadow var(--transitionSpeed) ease;
+}
+
+.btn-primary {
+    background-color: var(--accentColor);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--accentHoverColor);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-success {
+    background-color: var(--successColor);
+    color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+    background-color: var(--successHoverColor);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Input styles */
+input[type="text"] {
+    border: 1px solid var(--borderColor);
+    background-color: var(--inputBackgroundColor);
+    color: var(--textColor);
+    border-radius: 0.5rem;
+    transition: border-color var(--transitionSpeed) ease, box-shadow var(--transitionSpeed) ease;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accentColor);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+/* File drop zone animations */
+#drop-zone {
+    border: 2px dashed var(--borderColor);
+    background-color: var(--inputBackgroundColor);
+    transition: all var(--transitionSpeed) ease;
+}
+
+#drop-zone.drag-over {
+    border-color: var(--accentColor);
+    background-color: rgba(99, 102, 241, 0.05);
+    transform: scale(1.01);
+}
+
+/* Progress bar animation */
+#progress-bar {
+    transition: width var(--transitionSpeed) ease;
+    background-color: var(--accentColor);
+}
+
+/* Toast notification animations */
+#toast {
+    transition: opacity 0.3s ease;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+#toast.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.toast-success {
+    background-color: var(--successColor);
+    color: white;
+}
+
+.toast-error {
+    background-color: var(--errorColor);
+    color: white;
+}
+
+/* File input container */
+.file-input-container {
+    position: relative;
+    width: 100%;
+}
+
+.file-input-label {
+    display: block;
+    cursor: pointer;
+    width: 100%;
+}
+
+/* Loading spinner */
+.spinner {
+    display: inline-block;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid rgba(99, 102, 241, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--accentColor);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Settings toggle buttons */
+.settings-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 100;
+}
+
+.toggle-btn {
+    background-color: var(--cardBackgroundColor);
+    color: var(--secondaryTextColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 0.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transitionSpeed) ease;
+}
+
+.toggle-btn:hover {
+    background-color: var(--infoBackgroundColor);
+    transform: translateY(-2px);
+}
+
+.toggle-btn:active {
+    transform: translateY(0);
+}
+
+/* Footer styles */
+footer {
+    color: var(--secondaryTextColor);
+    transition: color var(--transitionSpeed) ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .settings-container {
+        top: auto;
+        bottom: 5rem;
+        right: 1rem;
+    }
+}
+
+/* Flow explanation styles */
+.flow-explanation {
+    margin-bottom: 2rem;
+}
+
+.flow-steps {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 auto;
+    max-width: 1000px;
+}
+
+.flow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background-color: var(--cardBackgroundColor);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: transform var(--transitionSpeed) ease, box-shadow var(--transitionSpeed) ease;
+    flex: 1;
+    min-width: 150px;
+    max-width: 200px;
+}
+
+.flow-step:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.flow-icon {
+    font-size: 2rem;
+    color: var(--accentColor);
+    margin-bottom: 1rem;
+    height: 3rem;
+    width: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--infoBackgroundColor);
+    border-radius: 50%;
+    transition: all var(--transitionSpeed) ease;
+}
+
+.flow-step:hover .flow-icon {
+    transform: scale(1.1);
+    background-color: var(--accentColor);
+    color: white;
+}
+
+.flow-content {
+    flex: 1;
+}
+
+.flow-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--textColor);
+}
+
+.flow-text {
+    font-size: 0.9rem;
+    color: var(--secondaryTextColor);
+}
+
+.flow-connector {
+    display: flex;
+    align-items: center;
+    color: var(--secondaryTextColor);
+    font-size: 1.25rem;
+}
+
+/* Feature card styles */
+.feature-card {
+    background-color: var(--infoBackgroundColor);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    transition: all var(--transitionSpeed) ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.feature-icon {
+    font-size: 2rem;
+    color: var(--accentColor);
+    margin-bottom: 1rem;
+    height: 4rem;
+    width: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--cardBackgroundColor);
+    border-radius: 50%;
+    transition: all var(--transitionSpeed) ease;
+}
+
+.feature-card:hover .feature-icon {
+    transform: scale(1.1);
+    background-color: var(--accentColor);
+    color: white;
+}
+
+/* Responsive adjustments for flow steps */
+@media (max-width: 768px) {
+    .flow-steps {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .flow-step {
+        width: 100%;
+        max-width: 100%;
+        margin-bottom: 1rem;
+    }
+    
+    .flow-connector {
+        transform: rotate(90deg);
+        margin: 0.5rem 0;
+    }
+}

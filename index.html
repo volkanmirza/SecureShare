@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureShare - E2E Encrypted P2P File Sharing</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Settings toggles -->
+    <div class="settings-container">
+        <button id="language-toggle" class="toggle-btn" title="Toggle Language">
+            <i class="fas fa-language"></i>
+        </button>
+        <button id="theme-toggle" class="toggle-btn" title="Toggle Theme">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-bold mb-2" data-i18n="appTitle">SecureShare</h1>
+            <p class="text-lg" data-i18n="appDescription">Uçtan uca şifreli eşler arası dosya paylaşımı</p>
+        </header>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- File Upload Section -->
+            <section id="upload-section" class="card p-6">
+                <h2 class="text-2xl font-semibold mb-4" data-i18n="shareFile">Dosya Paylaş</h2>
+                
+                <div class="file-input-container mb-4">
+                    <label for="file-input" class="file-input-label">
+                        <div id="drop-zone" class="rounded-lg p-8 text-center cursor-pointer transition-colors">
+                            <div id="file-icon" class="text-5xl mb-2">📁</div>
+                            <p id="file-prompt" data-i18n="selectFilePrompt">Dosya seçmek için tıklayın veya sürükleyin</p>
+                            <p id="file-name" class="mt-2 font-medium hidden"></p>
+                            <p id="file-size" class="text-sm hidden"></p>
+                        </div>
+                        <input type="file" id="file-input" class="hidden">
+                    </label>
+                </div>
+                
+                <button id="share-btn" class="w-full btn btn-primary py-3 px-4 disabled:cursor-not-allowed" disabled>
+                    <span data-i18n="shareButton">Dosya Paylaş</span>
+                </button>
+
+                <div id="share-result" class="mt-6 hidden">
+                    <div class="mb-2" data-i18n="shareCode">Paylaşım kodu:</div>
+                    <div class="flex">
+                        <input type="text" id="share-code" class="flex-grow border rounded-l-md px-3 py-2 font-mono text-sm" readonly>
+                        <button id="copy-btn" class="px-4 rounded-r-md">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <p id="status-sender" class="mt-2 text-sm"></p>
+                </div>
+            </section>
+
+            <!-- File Download Section -->
+            <section id="download-section" class="card p-6">
+                <h2 class="text-2xl font-semibold mb-4" data-i18n="downloadFile">Dosya İndir</h2>
+                
+                <div class="mb-4">
+                    <label for="receive-code" class="block mb-2" data-i18n="enterShareCode">Paylaşım kodunu girin</label>
+                    <input type="text" id="receive-code" class="w-full border rounded-md px-3 py-2 focus:outline-none" 
+                           data-i18n-placeholder="shareCodePlaceholder" placeholder="Örn: XYZ123">
+                </div>
+                
+                <button id="receive-btn" class="w-full btn btn-primary py-3 px-4">
+                    <span data-i18n="connectAndDownload">Bağlan ve İndir</span>
+                </button>
+
+                <div id="download-status" class="mt-6 hidden">
+                    <div class="flex items-center mb-2">
+                        <div id="download-icon" class="text-2xl mr-2">⏳</div>
+                        <div id="download-message" data-i18n="connecting">Bağlantı kuruluyor...</div>
+                    </div>
+                    
+                    <div id="progress-container" class="hidden">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span id="file-info"></span>
+                            <span id="progress-percent">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="progress-bar" class="h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <button id="download-btn" class="w-full mt-4 btn btn-success py-2 px-4 hidden">
+                        <span data-i18n="startDownload">İndirmeyi Başlat</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Information Section -->
+        <section class="mt-12 card p-6">
+            <h2 class="text-2xl font-semibold mb-6 text-center" data-i18n="howItWorks">Nasıl Çalışır?</h2>
+            
+            <!-- Step-by-step flow explanation -->
+            <div class="flow-explanation mb-8">
+                <div class="flow-steps">
+                    <div class="flow-step">
+                        <div class="flow-icon">
+                            <i class="fas fa-file-upload"></i>
+                        </div>
+                        <div class="flow-content">
+                            <h3 class="flow-title" data-i18n="step1Title">1. Dosya Seçimi</h3>
+                            <p class="flow-text" data-i18n="step1Text">Gönderici dosyasını seçer ve paylaşım kodu oluşturulur.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flow-connector">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                    
+                    <div class="flow-step">
+                        <div class="flow-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div class="flow-content">
+                            <h3 class="flow-title" data-i18n="step2Title">2. Kod Paylaşımı</h3>
+                            <p class="flow-text" data-i18n="step2Text">Gönderici, paylaşım kodunu alıcıya iletir.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flow-connector">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                    
+                    <div class="flow-step">
+                        <div class="flow-icon">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                        <div class="flow-content">
+                            <h3 class="flow-title" data-i18n="step3Title">3. Bağlantı</h3>
+                            <p class="flow-text" data-i18n="step3Text">Alıcı kodu girer ve güvenli bağlantı kurulur.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flow-connector">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                    
+                    <div class="flow-step">
+                        <div class="flow-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="flow-content">
+                            <h3 class="flow-title" data-i18n="step4Title">4. Güvenli Transfer</h3>
+                            <p class="flow-text" data-i18n="step4Text">Dosya şifreli olarak doğrudan alıcıya aktarılır.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Feature highlights -->
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h3 class="text-lg font-medium mb-2" data-i18n="securityTitle">Güvenlik</h3>
+                    <p data-i18n="securityText">Dosyalar uçtan uca şifreli olarak, WebRTC'nin sağladığı DTLS protokolü üzerinden aktarılır. Dosya içeriği asla sunuculara ulaşmaz, doğrudan alıcıya gönderilir.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <h3 class="text-lg font-medium mb-2" data-i18n="principleTitle">Çalışma Prensibi</h3>
+                    <p data-i18n="principleText">WebRTC ile eşler arası bağlantı kurulur. WebSocket tabanlı bir sinyal sunucusu sadece iki taraf arasındaki ilk bağlantı kurulumuna aracılık eder.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3 class="text-lg font-medium mb-2" data-i18n="technologiesTitle">Teknolojiler</h3>
+                    <p data-i18n="technologiesText">HTML5, Tailwind CSS, Vanilla JavaScript, WebRTC, WebSocket, Node.js teknolojileri kullanılarak geliştirilmiş, modern ve güvenli bir dosya paylaşım uygulamasıdır.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="mt-12 py-4 text-center text-sm">
+        <p data-i18n="footerText">SecureShare © 2023 | Uçtan uca şifreli, eşler arası dosya paylaşım uygulaması</p>
+    </footer>
+
+    <div id="toast" class="fixed bottom-4 right-4 px-4 py-2 rounded-md shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none">
+        Mesaj
+    </div>
+
+    <script src="config.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
