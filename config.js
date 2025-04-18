@@ -72,7 +72,10 @@ const translations = {
         "connectedToSenderInitiatingKeyExchange": "Connected to sender. Starting secure key exchange...",
         "downloadStarting": "Download starting...",
         "fileSentWaitingConfirmation": "File sent. Waiting for receiver confirmation...",
-        "transferSuccessPrompt": "File sent successfully! Select another file to share again."
+        "transferSuccessPrompt": "File sent successfully! Select another file to share again.",
+        // Popup translations
+        "successTitle": "Success!",
+        "okButton": "OK"
     },
     tr: {
         // Header
@@ -144,7 +147,10 @@ const translations = {
         "connectedToSenderInitiatingKeyExchange": "Göndericiye bağlandı. Güvenli anahtar değişimi başlatılıyor...",
         "downloadStarting": "İndirme başlatılıyor...",
         "fileSentWaitingConfirmation": "Dosya gönderildi. Alıcı onayı bekleniyor...",
-        "transferSuccessPrompt": "Dosya başarıyla gönderildi! Tekrar paylaşmak için başka bir dosya seçin."
+        "transferSuccessPrompt": "Dosya başarıyla gönderildi! Tekrar paylaşmak için başka bir dosya seçin.",
+        // Popup translations (Turkish)
+        "successTitle": "Başarılı!",
+        "okButton": "Tamam"
     }
 };
 

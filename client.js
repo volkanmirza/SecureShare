@@ -67,6 +67,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const qrcodeContainer = document.getElementById('qrcode'); // QR Code container
     
+    const successPopup = document.getElementById('success-popup');
+    const successPopupMessage = document.getElementById('success-popup-message');
+    const successPopupOkBtn = document.getElementById('success-popup-ok-btn');
+    
     // WebSocket connection
     let socket = null;
     let sharedKey = null; // <-- Add variable for shared secret key
@@ -460,14 +464,8 @@ document.addEventListener('DOMContentLoaded', function() {
                      sharedKey = null;
                      keyPair = null;
                      
-                     // Show success toast 
-                     showToast(getTranslation('transferSuccessPrompt')); 
-
-                     // Re-introduce UI reset after a delay (e.g., after toast hides)
-                     setTimeout(() => {
-                         console.log("Resetting sender UI after successful transfer.");
-                         resetUI();
-                     }, 3500); // Reset slightly after the toast (3000ms duration)
+                     // Show success popup instead of toast
+                     showSuccessPopup(getTranslation('transferSuccessPrompt')); 
 
                      break;
 
@@ -691,6 +689,9 @@ document.addEventListener('DOMContentLoaded', function() {
             qrcodeContainer.innerHTML = '';
             qrcodeContainer.classList.add('hidden'); // Hide it again
         }
+
+        // Also ensure popup is hidden on general reset
+        hideSuccessPopup(); 
     }
     
     // Format file size in human-readable form
@@ -915,6 +916,33 @@ document.addEventListener('DOMContentLoaded', function() {
              }, 100); 
              */
             console.log("Download clicked. Cleanup logic temporarily disabled for testing.");
+        });
+    }
+
+    // --- Popup Control Functions ---
+    function showSuccessPopup(message) {
+        if (!successPopup || !successPopupMessage) return;
+        successPopupMessage.textContent = message;
+        successPopup.classList.remove('hidden');
+        // Apply current translations to popup static text (title, button) if needed
+        // This might be redundant if initializeSettings already handled it, but good practice
+        if(window.appConfig && window.appConfig.setLanguage) {
+            const currentLang = localStorage.getItem('preferredLanguage') || window.appConfig.getPreferredLanguage();
+            window.appConfig.setLanguage(currentLang); // Re-apply translations to ensure popup is correct
+        }
+    }
+
+    function hideSuccessPopup() {
+        if (!successPopup) return;
+        successPopup.classList.add('hidden');
+    }
+    // --- End Popup Control Functions ---
+
+    // Event listener for Popup OK button
+    if (successPopupOkBtn) {
+        successPopupOkBtn.addEventListener('click', () => {
+            hideSuccessPopup();
+            resetUI(); // Reset the UI after clicking OK
         });
     }
 });
