@@ -315,23 +315,92 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
         const urlParams = new URLSearchParams(window.location.search);
         const codeFromUrl = urlParams.get('code');
-        if (codeFromUrl && receiveCode && receiveBtn) {
+        
+        if (codeFromUrl) {
             console.log(`Code found in URL: ${codeFromUrl}`);
-            receiveCode.value = codeFromUrl.trim().toUpperCase();
-            showToast(getTranslation('codeReceivedFromUrl')); // Optional: Notify user
-
-            // Automatically attempt to connect after a short delay 
-            // to ensure WebSocket is likely ready and UI updates are visible
-            setTimeout(() => {
-                // *** 1. POTANSİYEL SORUN: Buton durumu ***
-                console.log(`Checking button state before auto-click. Disabled: ${receiveBtn.disabled}`); // BUTON DURUMUNU LOGLAYALIM
-                if (receiveBtn.disabled === false) { // Only click if not already disabled
-                    console.log('Auto-clicking connect button...');
-                    receiveBtn.click(); // Trigger the click event
-                } else {
-                     console.log('Auto-click skipped: Receive button is disabled.'); // Neden atlandığını loglayalım
+            
+            // URL kodunu işlemek için bir fonksiyon oluştur
+            const processUrlCode = async () => {
+                // Önce gerekli DOM elemanlarının yüklendiğinden emin ol
+                if (!receiveCode || !receiveBtn) {
+                    console.error("Required DOM elements not found: receiveCode or receiveBtn");
+                    return;
                 }
-            }, 750); // Gecikmeyi biraz artırdık (750ms)
+                
+                // Kodu alana yerleştir
+                receiveCode.value = codeFromUrl.trim().toUpperCase();
+                showToast(getTranslation('codeReceivedFromUrl')); // Kullanıcıyı bilgilendir
+                
+                console.log("Ensuring WebSocket connection before auto-connect...");
+                
+                // WebSocket bağlantısının hazır olmasını bekle
+                if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    console.log("WebSocket not ready, initializing and waiting...");
+                    initWebSocket();
+                    
+                    // WebSocket hazır olana kadar bekle (max 5 saniye)
+                    const socketReady = await new Promise((resolve) => {
+                        const checkSocket = () => {
+                            if (socket && socket.readyState === WebSocket.OPEN) {
+                                console.log("WebSocket is now OPEN and ready");
+                                resolve(true);
+                            } else if (checkCount > 50) { // 50 x 100ms = 5 saniye
+                                console.warn("WebSocket failed to open after timeout");
+                                resolve(false);
+                            } else {
+                                checkCount++;
+                                console.log(`Waiting for WebSocket... State: ${socket ? socket.readyState : 'no socket'}, attempt: ${checkCount}`);
+                                setTimeout(checkSocket, 100);
+                            }
+                        };
+                        let checkCount = 0;
+                        checkSocket();
+                    });
+                    
+                    if (!socketReady) {
+                        console.error("WebSocket connection failed, cannot auto-connect");
+                        showToast(getTranslation('connectionError'), true);
+                        return;
+                    }
+                } else {
+                    console.log("WebSocket already open and ready");
+                }
+                
+                console.log("WebSocket ready, preparing to auto-click connect button...");
+                
+                // Butonun etkinleşmesini bekle ve tıkla
+                let clickAttempts = 0;
+                const maxAttempts = 5;
+                
+                const attemptButtonClick = () => {
+                    clickAttempts++;
+                    console.log(`Auto-click attempt ${clickAttempts}/${maxAttempts}. Button disabled: ${receiveBtn.disabled}`);
+                    
+                    if (receiveBtn.disabled === false) {
+                        console.log('Auto-clicking connect button...');
+                        receiveBtn.click(); // Tıklama olayını tetikle
+                        return true;
+                    } else if (clickAttempts < maxAttempts) {
+                        console.log(`Button disabled, scheduling next attempt in 1 second...`);
+                        setTimeout(attemptButtonClick, 1000);
+                        return false;
+                    } else {
+                        console.log('Max attempts reached. Button still disabled, giving up auto-click');
+                        showToast(getTranslation('autoConnectFailed'), true);
+                        return false;
+                    }
+                };
+                
+                // İlk tıklama denemesini başlat (2 saniye gecikmeyle)
+                setTimeout(attemptButtonClick, 2000);
+            };
+            
+            // DOMContentLoaded olayı içindeyse yürüt, değilse sayfa tam yüklendikten sonra
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', processUrlCode);
+            } else {
+                processUrlCode();
+            }
         }
     } catch (e) {
         console.error("Error processing URL parameters:", e);
