@@ -144,6 +144,13 @@ wss.on('connection', (ws) => {
                     forwardMessage(connectionId, 'public-key', data.key);
                     break;
 
+                case 'offer':
+                case 'answer':
+                case 'candidate':
+                    console.log(`Forwarding WebRTC signal '${data.type}' from ${connectionId}`);
+                    forwardMessage(connectionId, data.type, data.payload);
+                    break;
+
                 case 'metadata':
                     console.log('Encrypted metadata received, forwarding...');
                     forwardMessage(connectionId, 'metadata', data.data);

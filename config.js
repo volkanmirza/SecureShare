@@ -304,6 +304,27 @@ function initializeSettings() {
     }
 }
 
+// --- Start: Added RTC Configuration Function ---
+function getRTCConfiguration() {
+    // You can add more STUN/TURN servers here if needed
+    // Example using Google's public STUN servers
+    const configuration = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            // Add TURN server configurations here if you have them
+            // {
+            //   urls: 'turn:your-turn-server.com:3478',
+            //   username: 'your-username',
+            //   credential: 'your-password'
+            // }
+        ]
+    };
+    console.log("Using RTC Configuration:", configuration);
+    return configuration;
+}
+// --- End: Added RTC Configuration Function ---
+
 // Expose functions and data to the global scope via window.appConfig
 window.appConfig = {
     translations,
@@ -314,5 +335,6 @@ window.appConfig = {
     setTheme,
     toggleLanguage,
     toggleTheme,
-    initializeSettings
+    initializeSettings,
+    getRTCConfiguration
 };

@@ -88,6 +88,17 @@ document.addEventListener('DOMContentLoaded', function() {
     let sendingProgress = 0;
     let receivingInProgress = false;
     
+    // --- Start: Added for multi-channel ---
+    const NUM_CHANNELS = 4; // Number of data channels for parallel transfer
+    let dataChannels = []; // Array to hold all data channels
+    let openDataChannels = 0; // Counter for open data channels
+    let channelStates = []; // To track readiness of each channel for sending
+    let receiveBuffers = {}; // To store received chunks per segment { segmentIndex: { chunkIndex: data } }
+    let segmentStatus = {}; // To track received chunks per segment { segmentIndex: { received: count, total: count, buffer: [] } }
+    let totalSegments = 0; // Total segments expected
+    let segmentsReceived = 0; // Count of fully received segments
+    // --- End: Added for multi-channel ---
+    
     // File metadata
     let fileMetadata = {
         name: '',
@@ -101,6 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const WS_URL = location.hostname === 'localhost' || location.hostname === '127.0.0.1' 
         ? 'ws://' + location.host
         : 'wss://' + location.host;
+    const RTC_CONFIGURATION = window.appConfig ? window.appConfig.getRTCConfiguration() : { iceServers: [] }; // Get from config
     
     // --- Start: Base64 Helper Functions ---
     function arrayBufferToBase64(buffer) {
@@ -266,9 +278,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast(getTranslation('codeCreated'));
                     shareResult.classList.remove('hidden');
                     statusSender.textContent = getTranslation('waitingForReceiver');
-                    keyPair = await generateKeyPair();
-                    console.log("Sender keys generated.");
-
+                    // Generate keys *after* code is confirmed created
+                    try {
+                        keyPair = await generateKeyPair();
+                        console.log("Sender keys generated.");
+                    } catch (keyGenError) {
+                         console.error("Sender key generation failed:", keyGenError);
+                         showToast(getTranslation('keyGenerationError'), true);
+                         resetUI();
+                         return; // Stop further processing
+                    }
+                    
                     // --- Generate and Display QR Code ---
                     if (qrcodeContainer && qrcodeElement && qrcodePrompt && typeof QRCode !== 'undefined') {
                         try {
@@ -315,6 +335,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             type: 'public-key',
                             key: exportedPublicKeyBase64 // <-- Send Base64 string
                         }));
+                        // WebRTC connection will now be initiated AFTER successful key exchange
+                        // in the 'public-key' message handler.
                     } else {
                          console.error("Sender key pair not ready.");
                          showToast(getTranslation('keyGenerationError'), true);
@@ -326,8 +348,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     downloadStatus.classList.remove('hidden');
                     downloadMessage.textContent = getTranslation('connectedToSenderInitiatingKeyExchange');
                     // Receiver generates keys and sends public key back as Base64
-                    keyPair = await generateKeyPair();
-                    console.log("Receiver keys generated.");
+                    try {
+                        keyPair = await generateKeyPair();
+                        console.log("Receiver keys generated.");
+                    } catch (keyGenError) {
+                         console.error("Receiver key generation failed:", keyGenError);
+                         showToast(getTranslation('keyGenerationError'), true);
+                         resetUI();
+                         return; // Stop further processing
+                    }
+                    
                      if (keyPair && keyPair.publicKey) {
                         const exportedPublicKey = await exportPublicKey(keyPair.publicKey);
                         const exportedPublicKeyBase64 = arrayBufferToBase64(exportedPublicKey); // <-- Convert to Base64
@@ -345,22 +375,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
                  case 'public-key': // Received by both sender and receiver
                     console.log("Received public key (Base64) from peer.");
+                    let remotePublicKey = null; // Define outside try block for logging
                     try {
-                         // Correctly read the key from message.data as forwarded by the server
-                         const remotePublicKeyData = base64ToArrayBuffer(message.data); // <-- Change from message.key to message.data
-                         const remotePublicKey = await importPublicKey(remotePublicKeyData);
+                         // Read the key from message.data (as forwarded by the server)
+                         if (!message.data) { // Check if message.data exists
+                             console.error("Public key message received without 'data' field.", message);
+                             throw new Error("Invalid public key message format from server");
+                         }
+                         const remotePublicKeyData = base64ToArrayBuffer(message.data); // <-- Read from message.data again
+                         remotePublicKey = await importPublicKey(remotePublicKeyData); // Assign here
+
+                         // LOGGING ADDED HERE
+                         console.log("Attempting to derive shared key. Sender's keyPair:", keyPair); 
+                         console.log("Imported remotePublicKey:", remotePublicKey);
 
                          if (keyPair && keyPair.privateKey && remotePublicKey) {
                              sharedKey = await deriveSharedKey(keyPair.privateKey, remotePublicKey);
                              console.log("Shared key derived successfully.");
-                             // Key exchange complete, proceed with file transfer initiation
-                              if (selectedFile) { // Sender: Start transfer if file is selected
-                                  statusSender.textContent = getTranslation('secureConnectionEstablishedSending');
-                                  initiateWebSocketFileTransfer();
-                              } else { // Receiver: Ready to receive metadata
-                                  downloadMessage.textContent = getTranslation('secureConnectionEstablishedWaiting');
+
+                             // Key exchange complete.
+                              if (selectedFile) { // Sender side: Initiate PeerConnection NOW
+                                  statusSender.textContent = getTranslation('secureConnectionEstablishedSending'); // Update status
+                                  
+                                  // --- Start: ADDED WebRTC Connection Initiation HERE ---
+                                  try {
+                                      console.log("Sender: Key exchange complete, creating PeerConnection...");
+                                      await createPeerConnection(true); // Create connection as initiator
+                                      if (!peerConnection) throw new Error("PeerConnection creation failed after key exchange");
+                                      console.log("Sender: PeerConnection created. Creating offer...");
+                                      const offer = await peerConnection.createOffer();
+                                      console.log("Sender: Offer created. Setting local description...");
+                                      await peerConnection.setLocalDescription(offer);
+                                      console.log("Sender: Local description set. Sending offer...");
+                                      socket.send(JSON.stringify({ type: 'offer', payload: offer }));
+                                  } catch (rtcError) {
+                                      console.error("Error initiating WebRTC connection after key exchange:", rtcError);
+                                      showToast(getTranslation('peerConnectionError'), true);
+                                      abortTransfer(); // Use abortTransfer to clean up WebRTC attempts
+                                  }
+                                  // --- End: ADDED WebRTC Connection Initiation HERE ---
+                                  
+                              } else { // Receiver side
+                                  downloadMessage.textContent = getTranslation('secureConnectionEstablishedWaiting'); // Update status
+                                  // Receiver now waits for the 'offer' message.
                               }
                          } else {
+                            // ERROR OCCURS HERE
                              console.error("Could not derive shared key. Own keys or remote key missing/invalid.");
                              showToast(getTranslation('keyExchangeError'), true);
                              resetUI();
@@ -369,6 +429,82 @@ document.addEventListener('DOMContentLoaded', function() {
                          console.error("Error processing received public key:", error);
                          showToast(getTranslation('keyExchangeError'), true);
                          resetUI();
+                     }
+                    break;
+                    
+                // --- Start: New WebRTC Signaling Handlers ---
+                case 'offer': // Received by Receiver
+                    console.log("Received offer from sender.");
+                    if (!keyPair || !sharedKey || peerConnection) { // Don't proceed if keys missing or connection already exists
+                        console.error("Cannot process offer: Keys missing or connection already exists.", { keyPair, sharedKey, peerConnection });
+                        return;
+                    }
+                    try {
+                        console.log("Receiver: Received offer. Creating PeerConnection...");
+                        await createPeerConnection(false); // Create connection as receiver
+                        if (!peerConnection) throw new Error("PeerConnection creation failed on receiver");
+                        console.log("Receiver: PeerConnection created. Setting remote description (offer)...");
+                        // Read offer payload from message.data (forwarded by server)
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.data)); 
+                        console.log("Receiver: Remote description (offer) set. Creating answer...");
+                        const answer = await peerConnection.createAnswer();
+                        console.log("Receiver: Answer created. Setting local description (answer)...");
+                        await peerConnection.setLocalDescription(answer);
+                        console.log("Receiver: Local description (answer) set. Sending answer...");
+                        // Send answer with payload field
+                        socket.send(JSON.stringify({ type: 'answer', payload: answer })); 
+
+                    } catch (rtcError) {
+                        console.error("Error handling offer or creating answer:", rtcError);
+                        showToast(getTranslation('peerConnectionError'), true);
+                        abortTransfer();
+                    }
+                    break;
+
+                case 'answer': // Received by Sender
+                    console.log("Received answer from receiver.");
+                    if (!peerConnection || !peerConnection.localDescription) { // Ensure connection and local offer exist
+                         console.error("Cannot process answer: PeerConnection or local description missing.");
+                         return;
+                    }
+                     try {
+                         console.log("Sender: Received answer. Setting remote description (answer)...");
+                         // Read answer payload from message.data (forwarded by server)
+                         await peerConnection.setRemoteDescription(new RTCSessionDescription(message.data)); 
+                         console.log("Sender: Remote description (answer) set. Connection should establish.");
+                         // ICE candidates will continue to be exchanged.
+                         // Data channels will open soon.
+                     } catch (rtcError) {
+                         console.error("Error setting remote description (answer):", rtcError);
+                         showToast(getTranslation('peerConnectionError'), true);
+                         abortTransfer();
+                     }
+                    break;
+
+                case 'candidate': // Received by Both
+                    // console.log("Received ICE candidate:", message.payload);
+                    if (!peerConnection) {
+                         console.warn("Received ICE candidate but PeerConnection does not exist.");
+                         return;
+                    }
+                     try {
+                         // Add candidate only if remote description is set (or sometimes before, check WebRTC docs)
+                         if (peerConnection.remoteDescription) {
+                              // Read candidate payload from message.data (forwarded by server)
+                              await peerConnection.addIceCandidate(new RTCIceCandidate(message.data)); 
+                              // console.log("ICE candidate added.");
+                         } else {
+                             // Queue candidate? For simplicity, we might ignore candidates received too early.
+                             console.warn("Received ICE candidate before remote description was set. Ignoring for now.");
+                         }
+                     } catch (error) {
+                         // Ignore benign errors like candidate failing to apply after close
+                         if (!peerConnection || peerConnection.signalingState === 'closed') {
+                              console.log("Ignoring ICE candidate error after connection closed.");
+                         } else {
+                              console.error("Error adding received ICE candidate:", error);
+                              // Consider if this warrants an abortTransfer()
+                         }
                      }
                     break;
 
@@ -497,10 +633,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clean up cryptographic keys on close/error
              sharedKey = null;
              keyPair = null;
-             if (!downloadBtn.classList.contains('hidden')) {
+             // Check if downloadBtn exists before accessing its classList
+             if (downloadBtn && !downloadBtn.classList.contains('hidden')) {
                  // Don't reset if download is ready
+                 console.log('WebSocket closed, but download is ready. Not resetting UI.');
              } else {
-                 // resetUI(); // Avoid resetting if user is about to download
+                 // If download button doesn't exist or is hidden, safe to consider resetting
+                 // resetUI(); // Still might want to avoid automatic reset on close
+                 console.log('WebSocket closed. Download not ready or button non-existent.');
              }
         };
         
@@ -540,127 +680,216 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Setup WebSocket file transfer as sender
-    async function sendFile() { // <-- Make async
-        if (!socket || socket.readyState !== WebSocket.OPEN || !selectedFile || !sharedKey) {
-            console.error("Cannot send file: WebSocket not open, file not selected, or shared key not ready.");
-             if (!sharedKey) showToast(getTranslation('keyExchangeIncomplete'), true);
+    async function sendFile() {
+        if (!selectedFile || !peerConnection || openDataChannels < NUM_CHANNELS || !sharedKey) {
+            console.error('Cannot send file. Prerequisites not met.', 
+                { selectedFile, peerConnection, openDataChannels, sharedKey });
+            showToast(getTranslation('sendFileError'), true);
+             if (openDataChannels < NUM_CHANNELS) {
+                 showToast(getTranslation('channelsNotReady'), true);
+             }
             return;
         }
 
-        console.log("Starting encrypted file send...");
-        // 1. Send encrypted metadata first
-         const metadata = {
+        transferCompleteFlag = false; // Reset completion flag
+        sendingProgress = 0;
+        statusSender.textContent = getTranslation('sendingFile');
+        statusSender.classList.remove('hidden');
+        console.log('Starting file send process...');
+
+        fileMetadata = {
             name: selectedFile.name,
             size: selectedFile.size,
-            type: selectedFile.type || 'application/octet-stream'
+            type: selectedFile.type
         };
-         try {
-             const encryptedMetadata = await encryptData(sharedKey, metadata);
-             console.log("Sending encrypted metadata:", encryptedMetadata);
-             socket.send(JSON.stringify({
-                 type: 'metadata',
-                 data: {
-                     iv: Array.from(encryptedMetadata.iv),
-                     ciphertext: Array.from(new Uint8Array(encryptedMetadata.ciphertext))
-                 }
-             }));
-         } catch (error) {
-             console.error("Error encrypting/sending metadata:", error);
-             showToast(getTranslation('encryptionError'), true);
-             resetUI();
-             return;
-         }
 
-
-        // 2. Send encrypted file chunks
-        fileReader = new FileReader();
-        let offset = 0;
-        sendingProgress = 0; // Reset progress
-
-        fileReader.addEventListener('error', error => {
-            console.error('Error reading file:', error);
-            showToast(getTranslation('fileReadError'), true);
-             resetUI(); // Reset on file read error
-        });
-
-        fileReader.addEventListener('abort', () => {
-            console.log('File reading aborted');
-             // Consider if resetUI() is needed here
-        });
-
-        fileReader.addEventListener('load', async (event) => { // <-- Make async
-            if (socket.readyState !== WebSocket.OPEN || !sharedKey) {
-                 console.warn("WebSocket closed or shared key lost during file read.");
-                 resetUI(); // Reset if connection lost during transfer
-                 return;
-             }
-
-            const chunk = event.target.result; // ArrayBuffer
-
-             try {
-                 const encryptedChunk = await encryptChunk(sharedKey, chunk);
-                 // console.log(`Sending encrypted chunk, offset: ${offset}, size: ${chunk.byteLength}`);
-
-                 socket.send(JSON.stringify({
-                     type: 'file-chunk',
-                     data: encryptedChunk // Already contains { iv, ciphertext (as array) }
-                 }));
-
-                 offset += chunk.byteLength;
-
-                 // Update progress
-                 sendingProgress = Math.round((offset / selectedFile.size) * 100);
-                 statusSender.textContent = `${getTranslation('sendingFile')} ${sendingProgress}%`;
-
-                 // Check if there's more data to send
-                 if (offset < selectedFile.size) {
-                     readNextChunk(offset);
-                 } else {
-                     console.log('Finished sending file chunks.');
-                     // statusSender.textContent = getTranslation('fileSentWaitingConfirmation'); // Wait for 'download-complete'
-                 }
-             } catch(error) {
-                  console.error("Error encrypting/sending chunk:", error);
-                  showToast(getTranslation('encryptionError'), true);
-                  resetUI();
-                  // Stop sending further chunks
-             }
-        });
-
-        function readNextChunk(currentOffset) {
-            const slice = selectedFile.slice(currentOffset, currentOffset + CHUNK_SIZE);
-            fileReader.readAsArrayBuffer(slice);
+        // 1. Send Encrypted Metadata (only on the first channel for simplicity)
+        try {
+            console.log("Encrypting and sending metadata...");
+            const encryptedMeta = await encryptData(sharedKey, { type: 'fileMeta', payload: fileMetadata });
+            dataChannels[0].send(JSON.stringify(encryptedMeta)); // Send metadata on channel 0
+            console.log("Metadata sent.");
+        } catch (error) {
+            console.error('Error sending metadata:', error);
+            showToast(getTranslation('metadataError'), true);
+            abortTransfer();
+            return;
         }
 
-        // Start reading the first chunk
-        readNextChunk(offset);
+        // 2. Prepare for chunk sending
+        const totalFileSize = selectedFile.size;
+        // Determine segment size - aim for roughly equal segments per channel
+        const segmentSize = Math.ceil(totalFileSize / NUM_CHANNELS);
+        let currentSegmentIndex = 0;
+        let currentOffset = 0;
+
+        fileReader = new FileReader();
+
+        // Keep track of progress per channel/segment
+        let segmentOffsets = Array(NUM_CHANNELS).fill(0).map((_, i) => i * segmentSize);
+        let segmentEndOffsets = segmentOffsets.map((offset, i) => Math.min(offset + segmentSize, totalFileSize));
+        let currentChunkIndices = Array(NUM_CHANNELS).fill(0);
+        let totalChunksPerSegment = segmentOffsets.map((offset, i) => Math.ceil((segmentEndOffsets[i] - offset) / CHUNK_SIZE));
+
+        console.log(`File Size: ${totalFileSize}, Channels: ${NUM_CHANNELS}, Segment Size: ${segmentSize}`);
+        console.log(`Segment Offsets: ${segmentOffsets}`);
+        console.log(`Segment End Offsets: ${segmentEndOffsets}`);
+        console.log(`Total Chunks per Segment: ${totalChunksPerSegment}`);
+
+        // Function to read and send the next chunk for a specific channel/segment
+        async function readAndSendSegmentChunk(channelIndex) {
+            if (segmentOffsets[channelIndex] >= segmentEndOffsets[channelIndex]) {
+                // Segment complete for this channel
+                console.log(`Segment ${channelIndex} completed sending.`);
+                // Optionally mark this channel as done for this segment
+                return; 
+            }
+
+            const start = segmentOffsets[channelIndex];
+            const end = Math.min(start + CHUNK_SIZE, segmentEndOffsets[channelIndex]);
+            const blobSlice = selectedFile.slice(start, end);
+            
+            try {
+                 const chunkData = await blobSlice.arrayBuffer(); // Read chunk as ArrayBuffer
+                 segmentOffsets[channelIndex] = end; // Update offset for the next chunk *within this segment*
+
+                 // Encrypt the chunk
+                 const encrypted = await encryptChunk(sharedKey, chunkData);
+                 if (!encrypted) throw new Error("Chunk encryption failed");
+
+                 // Prepare header (12 bytes: segmentIndex, chunkIndex, totalChunksInSegment)
+                 const header = new ArrayBuffer(12);
+                 const headerView = new DataView(header);
+                 headerView.setUint32(0, channelIndex, true); // Segment Index (using channel index as segment index for now)
+                 headerView.setUint32(4, currentChunkIndices[channelIndex], true); // Chunk Index within segment
+                 headerView.setUint32(8, totalChunksPerSegment[channelIndex], true); // Total chunks in this segment
+                 currentChunkIndices[channelIndex]++; // Increment chunk index
+
+                 // Combine header and encrypted chunk data
+                 const encryptedChunkArray = new Uint8Array(encrypted.ciphertext);
+                 const ivArray = new Uint8Array(encrypted.iv); // IV needed for decryption
+                 const payload = new Uint8Array(header.byteLength + ivArray.length + encryptedChunkArray.length);
+                 payload.set(new Uint8Array(header), 0);
+                 payload.set(ivArray, header.byteLength);
+                 payload.set(encryptedChunkArray, header.byteLength + ivArray.length);
+
+                 // Send the combined data
+                 const channel = dataChannels[channelIndex];
+
+                 // Check for backpressure before sending
+                 if (channel.bufferedAmount > channel.bufferedAmountLowThreshold * 2) { // More aggressive check
+                      console.warn(`Channel ${channelIndex} buffer full (${channel.bufferedAmount}). Pausing slightly.`);
+                      channelStates[channelIndex] = false; // Mark as busy
+                      // Wait for bufferedAmountLow or use setTimeout as a fallback
+                      await new Promise(resolve => {
+                           const checkBuffer = () => {
+                                if (channel.bufferedAmount <= channel.bufferedAmountLowThreshold) {
+                                     channelStates[channelIndex] = true;
+                                     resolve();
+                                } else {
+                                     setTimeout(checkBuffer, 50); // Check again shortly
+                                }
+                           };
+                           channel.onbufferedamountlow = () => {
+                                channelStates[channelIndex] = true;
+                                console.log(`BufferedAmountLow triggered for channel ${channelIndex}`);
+                                resolve();
+                                channel.onbufferedamountlow = null; // Clean up listener
+                           };
+                           setTimeout(checkBuffer, 100); // Fallback timeout check
+                      });
+                      console.log(`Channel ${channelIndex} buffer cleared. Resuming send.`);
+                 }
+
+                 if (channel.readyState === 'open') {
+                      channel.send(payload.buffer);
+                      sendingProgress += chunkData.byteLength; // Update global progress
+
+                      // Update UI (maybe less frequently for performance)
+                      if (currentChunkIndices[channelIndex] % 10 === 0 || segmentOffsets[channelIndex] >= segmentEndOffsets[channelIndex]) {
+                           const percent = Math.min(100, Math.floor((sendingProgress / totalFileSize) * 100));
+                            // Update a general progress indicator if needed, or rely on receiver progress
+                            statusSender.textContent = getTranslation('sendingProgress', { percent: percent });
+                      }
+                 } else {
+                      console.warn(`Channel ${channelIndex} is not open. State: ${channel.readyState}. Aborting segment.`);
+                      // Handle channel being closed unexpectedly during send
+                      abortTransfer();
+                      return; // Stop sending on this channel
+                 }
+
+                 // Continue sending chunks for this segment
+                 if (segmentOffsets[channelIndex] < segmentEndOffsets[channelIndex]) {
+                     // Use requestAnimationFrame or setTimeout(0) for better responsiveness
+                     // requestAnimationFrame(() => readAndSendSegmentChunk(channelIndex)); 
+                     setTimeout(() => readAndSendSegmentChunk(channelIndex), 0);
+                 } else {
+                     console.log(`Finished sending segment ${channelIndex}`);
+                     // Check if all segments are done
+                     if (sendingProgress >= totalFileSize) {
+                         handleSendComplete();
+                     }
+                 }
+
+            } catch (error) {
+                 console.error(`Error reading/sending chunk for channel ${channelIndex}:`, error);
+                 showToast(getTranslation('chunkReadSendError'), true);
+                 abortTransfer();
+            }
+        }
+
+        // Start sending chunks for all segments in parallel
+        console.log("Initiating parallel chunk sending across channels...");
+        for (let i = 0; i < NUM_CHANNELS; i++) {
+             if (segmentOffsets[i] < segmentEndOffsets[i]) { // Only start if segment has data
+                  // Use setTimeout to avoid blocking the main thread immediately
+                 setTimeout(() => readAndSendSegmentChunk(i), 0);
+             }
+        }
     }
 
-    // This function is now only called *after* key exchange is complete
-    function initiateWebSocketFileTransfer() {
-         if (selectedFile && sharedKey) {
-             console.log("Key exchange complete, initiating file transfer.");
-             sendFile(); // Call the async sendFile function
-         } else {
-             console.log("Key exchange complete, waiting for sender to initiate transfer.");
-             // Receiver side: We just wait for 'metadata' message
-         }
-    }
-    
+    // Function called when sending is complete
+    function handleSendComplete() {
+         if (transferCompleteFlag) return; // Already handled
+         transferCompleteFlag = true;
+
+         console.log('File sending theoretically complete.');
+         statusSender.textContent = getTranslation('fileSentWaiting');
+         // The sender doesn't know for sure if the receiver got everything.
+         // Optionally, wait for an acknowledgement message from the receiver via WebSocket or a dedicated channel.
+         // For now, just update status.
+
+         // Consider closing channels after a delay or confirmation
+         // setTimeout(() => {
+         //    closeDataChannels();
+         //    closePeerConnection();
+         // }, 5000); // Example: close after 5 seconds
+     }
+
     // Reset UI to initial state
     function resetUI() {
         console.log("Resetting UI and state.");
         // Reset file input and related UI
         if (fileInput) fileInput.value = ''; // Clear file input
-        if (filePrompt) filePrompt.classList.remove('hidden');
-        if (fileName) fileName.textContent = '';
-        if (fileSize) fileSize.textContent = '';
-        if (fileIcon) fileIcon.className = 'fas fa-file-upload text-4xl text-gray-400';
-        if (dropZone) dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        if (filePrompt) filePrompt.classList.remove('hidden'); // <-- Make prompt visible again
+        if (fileName) {
+             fileName.textContent = '';
+             fileName.classList.add('hidden'); // <-- Hide filename
+        }
+        if (fileSize) {
+            fileSize.textContent = '';
+            fileSize.classList.add('hidden'); // <-- Hide filesize
+        }
+        if (fileIcon) fileIcon.textContent = '📁'; // Reset icon to default folder
+        if (dropZone) dropZone.classList.remove('drag-over'); // Remove drag over style
+        // if (dropZone) dropZone.classList.remove('border-blue-500', 'bg-blue-50'); // These might not be standard styles
         if (shareBtn) shareBtn.disabled = true;
         if (shareResult) shareResult.classList.add('hidden');
         if (shareCode) shareCode.value = '';
-        if (statusSender) statusSender.textContent = '';
+        if (statusSender) {
+            statusSender.textContent = '';
+            statusSender.classList.add('hidden'); // Ensure sender status is hidden
+        }
 
         // Reset receiver UI elements
         if (receiveCode) receiveCode.value = '';
@@ -817,6 +1046,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle file select from input or drag-drop
     function handleFileSelect(file) {
+        console.log("handleFileSelect called with file:", file?.name); // Log function call and filename
         // Reset previous share state if a new file is selected after sharing
         if (!shareResult.classList.contains('hidden')) {
             console.log('New file selected while a share was active. Resetting UI.');
@@ -827,50 +1057,72 @@ document.addEventListener('DOMContentLoaded', function() {
 
         selectedFile = file;
         
+        console.log("Updating UI elements..."); // Log before UI update
         // Update UI
-        filePrompt.textContent = getTranslation('selectedFile');
+        filePrompt.classList.add('hidden'); // <-- Hide the prompt
+        // filePrompt.textContent = getTranslation('selectedFile'); // No need to change text if hidden
         fileName.textContent = file.name;
         fileSize.textContent = formatFileSize(file.size);
         fileIcon.textContent = getFileIcon(file.name);
         
         fileName.classList.remove('hidden');
         fileSize.classList.remove('hidden');
+        
+        console.log("Enabling share button..."); // Log before enabling button
         shareBtn.disabled = false;
+        console.log("shareBtn disabled state after update:", shareBtn.disabled); // Log button state
     }
     
     // Share button click
-    shareBtn.addEventListener('click', function() {
+    shareBtn.addEventListener('click', async function() { // Made async for key generation check
         if (!selectedFile) {
             showToast(getTranslation('pleaseSelectFile'), true);
             return;
         }
         
-        initWebSocket();
-        
-        initiateWebSocketFileTransfer();
+        // Ensure WebSocket is initialized (or re-initialize if needed)
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+             console.log("WebSocket not open, initializing...");
+             initWebSocket();
+             // Need to wait for socket to open before proceeding
+             await new Promise(resolve => {
+                  const checkSocket = () => {
+                       if (socket && socket.readyState === WebSocket.OPEN) {
+                           resolve();
+                       } else {
+                           setTimeout(checkSocket, 100);
+                       }
+                  };
+                  checkSocket();
+             });
+             console.log("WebSocket connection ready.");
+        }
+
+        // Ensure keys are generated (should happen on 'code-created' now, but double check)
+        if (!keyPair) {
+             console.log("Keypair not found, attempting to generate...");
+             try {
+                  keyPair = await generateKeyPair();
+                  console.log("Sender keys generated on demand.");
+             } catch (keyGenError) {
+                  console.error("Sender key generation failed on demand:", keyGenError);
+                  showToast(getTranslation('keyGenerationError'), true);
+                  resetUI();
+                  return;
+             }
+        }
         
         // Generate and send share code
         const code = generateSecureCode();
+        console.log("Generated code:", code);
         
-        // Wait for socket to be ready
-        const waitForSocketConnection = callback => {
-            setTimeout(() => {
-                if (socket.readyState === 1) {
-                    if (callback !== null) {
-                        callback();
-                    }
-                } else {
-                    waitForSocketConnection(callback);
-                }
-            }, 100);
-        };
-        
-        waitForSocketConnection(() => {
-            socket.send(JSON.stringify({
-                type: 'create-code',
-                code: code
-            }));
-        });
+        // Send code (WebSocket should be ready now)
+        socket.send(JSON.stringify({
+            type: 'create-code',
+            code: code
+        }));
+        statusSender.textContent = getTranslation('generatingCode'); // Update status immediately
+        statusSender.classList.remove('hidden');
     });
     
     // Copy button click
@@ -881,7 +1133,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Receive button click
-    receiveBtn.addEventListener('click', function() {
+    receiveBtn.addEventListener('click', async function() { // Made async
         const code = receiveCode.value.trim().toUpperCase();
         
         if (code.length !== CODE_LENGTH) {
@@ -889,27 +1141,37 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        initWebSocket();
+        // Ensure WebSocket is initialized (or re-initialize if needed)
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.log("Receiver: WebSocket not open, initializing...");
+            initWebSocket();
+            // Need to wait for socket to open before proceeding
+            await new Promise(resolve => {
+                 const checkSocket = () => {
+                      if (socket && socket.readyState === WebSocket.OPEN) {
+                          resolve();
+                      } else {
+                          setTimeout(checkSocket, 100);
+                      }
+                 };
+                 checkSocket();
+            });
+            console.log("Receiver: WebSocket connection ready.");
+       } else {
+            console.log("Receiver: WebSocket already open.");
+       }
         
-        // Wait for socket to be ready
-        const waitForSocketConnection = callback => {
-            setTimeout(() => {
-                if (socket.readyState === 1) {
-                    if (callback !== null) {
-                        callback();
-                    }
-                } else {
-                    waitForSocketConnection(callback);
-                }
-            }, 100);
-        };
-        
-        waitForSocketConnection(() => {
-            socket.send(JSON.stringify({
-                type: 'join-code',
-                code: code
-            }));
-        });
+        // Send join code (WebSocket should be ready now)
+        console.log("Receiver: Sending join-code:", code);
+        socket.send(JSON.stringify({
+            type: 'join-code',
+            code: code
+        }));
+        // Update status immediately
+        downloadStatus.classList.remove('hidden');
+        downloadIcon.textContent = '⏳'; 
+        downloadMessage.textContent = getTranslation('connectingToSender');
+        progressContainer.classList.add('hidden'); // Hide progress initially
     });
 
     // Initialize WebSocket on load
@@ -976,4 +1238,459 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     */
+
+    // Create Peer Connection
+    async function createPeerConnection(isInitiator) { // <-- Make async
+        console.log(`Attempting to create PeerConnection. isInitiator: ${isInitiator}`); // ADDED
+        resetRTCVariables(); // Reset variables before creating a new connection
+
+        try {
+            console.log("Executing: new RTCPeerConnection(RTC_CONFIGURATION)"); // ADDED
+            peerConnection = new RTCPeerConnection(RTC_CONFIGURATION);
+            console.log("PeerConnection object created:", peerConnection); // ADDED
+
+            if (!peerConnection) { // ADDED Check
+                 console.error("RTCPeerConnection returned null or undefined!");
+                 throw new Error("PeerConnection object is null");
+            }
+            
+            console.log("Attaching onicecandidate listener..."); // ADDED
+            peerConnection.onicecandidate = event => {
+                if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
+                    console.log('Sending ICE candidate...');
+                    socket.send(JSON.stringify({ type: 'candidate', payload: event.candidate }));
+                }
+            };
+
+            console.log("Attaching oniceconnectionstatechange listener..."); // ADDED
+            peerConnection.oniceconnectionstatechange = () => {
+                if (peerConnection) {
+                    console.log(`---> ICE Connection State Changed: ${peerConnection.iceConnectionState}`); // MODIFIED Log
+                    if (['disconnected', 'failed', 'closed'].includes(peerConnection.iceConnectionState)) {
+                        // Handle connection failure more gracefully
+                        if (receivingInProgress || sendingProgress > 0) {
+                             showToast(getTranslation('connectionInterrupted'), true);
+                        }
+                       // Clean up resources
+                       closeDataChannels();
+                       closePeerConnection();
+                       resetUI(); // Reset UI to allow retry
+                    }
+                }
+            };
+
+            // --- Start: Multi-channel handling ---
+            if (isInitiator) {
+                console.log(`Creating ${NUM_CHANNELS} data channels`);
+                channelStates = Array(NUM_CHANNELS).fill(false); // Initialize channel states
+                for (let i = 0; i < NUM_CHANNELS; i++) {
+                    const label = `fileChannel-${i}`;
+                    const channel = peerConnection.createDataChannel(label, { ordered: true }); // Maintain order for simplicity first
+                    setupDataChannel(channel, i);
+                    dataChannels.push(channel);
+                }
+            } else {
+                peerConnection.ondatachannel = event => {
+                    console.log('Data channel received:', event.channel.label);
+                    const channel = event.channel;
+                    // Simple way to get index from label, assuming 'fileChannel-N' format
+                    const channelIndex = parseInt(channel.label.split('-')[1], 10);
+                     if (!isNaN(channelIndex) && channelIndex >= 0 && channelIndex < NUM_CHANNELS) {
+                         setupDataChannel(channel, channelIndex);
+                         dataChannels[channelIndex] = channel; // Store in the correct index
+                     } else {
+                         console.error("Received unexpected data channel label:", channel.label);
+                     }
+                };
+            }
+            // --- End: Multi-channel handling ---
+
+
+        } catch (error) {
+            console.error('Error creating Peer Connection:', error);
+            showToast(getTranslation('peerConnectionError'), true);
+            resetUI();
+        }
+    }
+
+    // --- Start: Setup Data Channel ---
+    function setupDataChannel(channel, index) {
+        channel.onopen = () => handleDataChannelOpen(channel, index);
+        channel.onclose = () => handleDataChannelClose(channel, index);
+        channel.onerror = (error) => handleDataChannelError(error, channel, index);
+        channel.onmessage = handleDataChannelMessage; // Single handler for all channels initially
+
+         // Set buffer threshold low to react quickly to backpressure
+         channel.bufferedAmountLowThreshold = CHUNK_SIZE * 4; // Example: 4 chunks
+         channel.onbufferedamountlow = () => handleBufferedAmountLow(channel, index);
+
+        console.log(`Data channel ${index} (${channel.label}) setup complete.`);
+    }
+
+    function handleDataChannelOpen(channel, index) {
+        console.log(`Data channel ${index} (${channel.label}) opened.`);
+        openDataChannels++;
+         channelStates[index] = true; // Mark channel as ready
+        console.log(`Open data channels count: ${openDataChannels}`);
+
+        // Check if all channels are open 
+        if (openDataChannels === NUM_CHANNELS) {
+            console.log("All channels reported open.");
+            if (selectedFile && !receivingInProgress) { // Check if it's the sender
+                console.log("Sender: All channels open, calling sendFile().");
+                sendFile(); // Now async, will be called here
+            } else if (!selectedFile && receivingInProgress) { // Check if it's the receiver
+                 console.log("Receiver: All channels open. Waiting for data...");
+            }
+        } else if (openDataChannels > NUM_CHANNELS) {
+             console.warn(`More channels opened (${openDataChannels}) than expected (${NUM_CHANNELS})`);
+        }
+    }
+
+     function handleDataChannelClose(channel, index) {
+         console.warn(`Data channel ${index} (${channel.label}) closed.`);
+         channelStates[index] = false; // Mark channel as not ready
+         openDataChannels = Math.max(0, openDataChannels - 1); // Decrement safely
+
+         // If a channel closes unexpectedly during transfer, abort.
+         // We need a reliable way to know if the closure was expected (end of transfer) or not.
+         // For now, any closure during active transfer might indicate an error.
+         if (receivingInProgress || (sendingProgress > 0 && sendingProgress < selectedFile?.size)) {
+              if (!transferCompleteFlag) { // Add a flag to indicate normal completion
+                 console.error(`Channel ${index} closed unexpectedly during transfer.`);
+                 showToast(getTranslation('transferAbortedChannelClose'), true);
+                 abortTransfer(); // Implement this function to clean up
+             }
+         }
+         // If it's the receiver and all channels closed AFTER receiving all data, it's normal.
+     }
+
+     function handleDataChannelError(error, channel, index) {
+         console.error(`Data channel ${index} (${channel.label}) error:`, error);
+         showToast(`${getTranslation('channelError')} (${channel.label}): ${error.error?.message || error}`, true);
+         channelStates[index] = false; // Mark channel as not ready
+         abortTransfer(); // Abort on any channel error
+     }
+
+     function handleBufferedAmountLow(channel, index) {
+          console.log(`Buffered amount low on channel ${index}. Ready for more data.`);
+          channelStates[index] = true; // Mark channel ready again
+          // Potentially resume sending if paused due to backpressure
+          // The sending loop needs to check channelStates
+          if (fileReader && !fileReader.paused) {
+               // If the main reader wasn't paused, maybe we don't need to do anything here,
+               // but if we implement pausing, this is where we'd resume.
+          }
+     }
+
+     // Function to close all data channels
+     function closeDataChannels() {
+         console.log("Closing data channels...");
+         dataChannels.forEach((channel, index) => {
+             if (channel && channel.readyState !== 'closed') {
+                 try {
+                     channel.close();
+                      console.log(`Channel ${index} closed.`);
+                 } catch (e) {
+                     console.error(`Error closing channel ${index}:`, e);
+                 }
+             }
+         });
+         dataChannels = [];
+         openDataChannels = 0;
+         channelStates = [];
+     }
+
+     // Function to close the peer connection
+     function closePeerConnection() {
+         if (peerConnection) {
+             console.log("Closing PeerConnection...");
+             try {
+                 peerConnection.close();
+             } catch (e) {
+                 console.error("Error closing PeerConnection:", e);
+             }
+             peerConnection = null;
+         }
+     }
+
+     // Abort transfer function (basic version)
+     let transferCompleteFlag = false; // Flag to prevent abort messages on normal completion
+     function abortTransfer() {
+          if (transferCompleteFlag) return; // Don't abort if normally completed
+
+          console.error("Aborting transfer...");
+          if (fileReader) {
+              fileReader.abort();
+              fileReader = null;
+          }
+          closeDataChannels();
+          closePeerConnection();
+          resetRTCVariables();
+          // Consider resetting receiver state too if applicable
+          resetUI();
+      }
+
+
+    // --- End: Setup Data Channel ---
+
+
+    // Handle incoming data channel messages (modified for multi-channel)
+    async function handleDataChannelMessage(event) {
+        if (!receivingInProgress) {
+            // First message should be metadata (handled on channel 0)
+            if (event.target.label === 'fileChannel-0') { 
+                try {
+                    const encryptedMetadata = JSON.parse(event.data);
+                    if (!sharedKey) { /* ... error handling ... */ return; }
+                    const decryptedPayload = await decryptData(sharedKey, encryptedMetadata.iv, encryptedMetadata.ciphertext);
+
+                    if (decryptedPayload && decryptedPayload.type === 'fileMeta') {
+                        fileMetadata = decryptedPayload.payload;
+                        console.log('Received file metadata:', fileMetadata);
+                        receivingInProgress = true;
+                        receivedSize = 0;
+                        segmentsReceived = 0;
+                        transferCompleteFlag = false;
+
+                        // Calculate expected segments and initialize buffers
+                        const totalFileSize = fileMetadata.size;
+                        const segmentSize = Math.ceil(totalFileSize / NUM_CHANNELS);
+                        totalSegments = NUM_CHANNELS; // One segment per channel
+                         segmentStatus = {};
+                         for (let i = 0; i < totalSegments; i++) {
+                             const start = i * segmentSize;
+                             const end = Math.min(start + segmentSize, totalFileSize);
+                             const expectedChunks = Math.ceil((end - start) / CHUNK_SIZE);
+                             // Store buffer and tracking info per segment
+                             segmentStatus[i] = { 
+                                 received: 0, 
+                                 total: expectedChunks,
+                                 buffer: new Array(expectedChunks), // Pre-allocate buffer array
+                                 isComplete: false,
+                                 startIndex: start,
+                                 endIndex: end
+                             };
+                         }
+                        console.log(`Expecting ${totalSegments} segments. Segment status initialized:`, segmentStatus);
+
+                        // Update UI for receiving
+                        downloadIcon.textContent = '📥';
+                        downloadMessage.textContent = getTranslation('receivingFile', { filename: fileMetadata.name });
+                        progressContainer.classList.remove('hidden');
+                        fileInfo.textContent = `${fileMetadata.name} (0 B / ${formatFileSize(fileMetadata.size)})`;
+                        progressBar.style.width = '0%';
+                        progressPercent.textContent = '0%';
+                    } else {
+                        console.warn('Received unexpected first message or decryption failed on channel 0.');
+                    }
+                } catch (error) {
+                    console.error('Error parsing metadata:', error);
+                    showToast(getTranslation('metadataError'), true);
+                     abortTransfer();
+                }
+            } else {
+                 console.warn(`Received non-metadata message on channel ${event.target.label} before metadata was processed.`);
+            }
+            return; // Don't process file chunks until metadata is received
+        }
+
+        // --- Process File Chunk ---
+        if (!sharedKey) { 
+            console.error("Shared key not available for chunk decryption!");
+            showToast(getTranslation('decryptionError'), true);
+            abortTransfer();
+            return; 
+        }
+
+        try {
+            const rawData = event.data; // Received as ArrayBuffer
+            if (!(rawData instanceof ArrayBuffer) || rawData.byteLength < 12) {
+                console.error('Invalid chunk data received. Expected ArrayBuffer with header.');
+                 // Optional: Request resend or abort
+                 return;
+            }
+
+            // Parse Header (12 bytes: segmentIndex, chunkIndex, totalChunksInSegment)
+             const headerView = new DataView(rawData, 0, 12);
+             const segmentIndex = headerView.getUint32(0, true);
+             const chunkIndex = headerView.getUint32(4, true);
+             const totalChunksInSegment = headerView.getUint32(8, true);
+
+             // Extract IV (12 bytes) and Ciphertext
+             const iv = rawData.slice(12, 24); // 12 bytes for AES-GCM IV
+             const ciphertext = rawData.slice(24);
+
+            if (segmentIndex < 0 || segmentIndex >= totalSegments) {
+                 console.error(`Invalid segment index ${segmentIndex} received.`);
+                 return;
+            }
+
+             // Decrypt the chunk
+             const decryptedChunk = await decryptChunk(sharedKey, new Uint8Array(iv), new Uint8Array(ciphertext));
+             if (!decryptedChunk) {
+                 console.error(`Failed to decrypt chunk: Segment ${segmentIndex}, Chunk ${chunkIndex}`);
+                 showToast(getTranslation('chunkDecryptError'), true);
+                  // Decide how to handle: request resend? Abort?
+                  // For now, might just drop the chunk and potentially fail later.
+                 return;
+             }
+
+             // Store the decrypted chunk in the correct buffer
+             const segment = segmentStatus[segmentIndex];
+             if (!segment) {
+                 console.error(`Segment status not found for index ${segmentIndex}`);
+                 return;
+             }
+
+             // Update total chunks if this is the first chunk received for the segment
+             // This relies on the header being correct. Could add checks.
+             if (segment.total === -1) { 
+                  segment.total = totalChunksInSegment;
+                  segment.buffer = new Array(totalChunksInSegment); // Initialize buffer if not done yet
+             }
+
+              if (chunkIndex >= 0 && chunkIndex < segment.total && !segment.buffer[chunkIndex]) {
+                  segment.buffer[chunkIndex] = decryptedChunk; // Store ArrayBuffer
+                  segment.received++;
+                  receivedSize += decryptedChunk.byteLength; // Update total received size
+
+                 // Update progress
+                 if (fileMetadata.size > 0) {
+                     const percent = Math.min(100, Math.floor((receivedSize / fileMetadata.size) * 100));
+                     progressBar.style.width = percent + '%';
+                     progressPercent.textContent = percent + '%';
+                     fileInfo.textContent = `${fileMetadata.name} (${formatFileSize(receivedSize)} / ${formatFileSize(fileMetadata.size)})`;
+                 }
+
+                 // Check if segment is complete
+                 if (!segment.isComplete && segment.received === segment.total) {
+                     segment.isComplete = true;
+                     segmentsReceived++;
+                     console.log(`Segment ${segmentIndex} received completely (${segment.received}/${segment.total} chunks). Total segments received: ${segmentsReceived}/${totalSegments}`);
+
+                     // Check if all segments are complete
+                     if (segmentsReceived === totalSegments) {
+                         handleReceiveComplete();
+                     }
+                 }
+             } else {
+                  console.warn(`Duplicate or invalid chunk index received: Segment ${segmentIndex}, Chunk ${chunkIndex}. Already received: ${!!segment.buffer[chunkIndex]}`);
+             }
+
+        } catch (error) {
+            console.error("Error processing received chunk:", error);
+            showToast(getTranslation('receiveError'), true);
+            abortTransfer(); // Abort on chunk processing error
+        }
+    }
+
+    // Function called when receiving is complete
+    function handleReceiveComplete() {
+         if (transferCompleteFlag) return; // Already handled
+         transferCompleteFlag = true;
+
+        console.log('All segments received. Assembling file...');
+        downloadIcon.textContent = '✅';
+        downloadMessage.textContent = getTranslation('fileReceivedAssembling');
+        progressBar.style.width = '100%';
+        progressPercent.textContent = '100%';
+
+        try {
+            // Assemble the final file from segment buffers
+            const fileChunks = [];
+            let assembledSize = 0;
+            for (let i = 0; i < totalSegments; i++) {
+                const segment = segmentStatus[i];
+                if (!segment || !segment.isComplete) {
+                    throw new Error(`Segment ${i} is not complete during final assembly.`);
+                }
+                // Concatenate chunks within the segment (they should be ArrayBuffers)
+                for (let j = 0; j < segment.total; j++) {
+                     if (!segment.buffer[j]) {
+                          throw new Error(`Missing chunk ${j} in completed segment ${i}`);
+                     }
+                     fileChunks.push(segment.buffer[j]);
+                     assembledSize += segment.buffer[j].byteLength;
+                }
+                 // Clear buffer after use to free memory
+                 segment.buffer = []; 
+            }
+
+            if (assembledSize !== fileMetadata.size) {
+                 console.warn(`Assembled size (${assembledSize}) does not match metadata size (${fileMetadata.size}).`);
+                 // Proceed anyway, but log warning.
+            }
+
+            const receivedFileBlob = new Blob(fileChunks, { type: fileMetadata.type });
+            console.log('File assembled successfully.');
+
+            // Create download link
+            const downloadUrl = URL.createObjectURL(receivedFileBlob);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = downloadUrl;
+            downloadLink.download = fileMetadata.name;
+
+             // Update UI to show download button/link
+             downloadMessage.innerHTML = ''; // Clear receiving message
+             const downloadButton = document.createElement('button');
+             downloadButton.textContent = getTranslation('downloadButtonText', { filename: fileMetadata.name });
+             downloadButton.className = 'btn btn-success w-full py-3 px-4 mt-2'; // Style as needed
+             downloadButton.onclick = () => {
+                 downloadLink.click();
+                 // Clean up URL object after click
+                 setTimeout(() => URL.revokeObjectURL(downloadUrl), 100);
+                  // Optionally reset UI after download starts
+                 // resetUI();
+             };
+             downloadMessage.appendChild(downloadButton);
+
+             // Show success popup
+             showSuccessPopup(getTranslation('transferSuccessMessage', { filename: fileMetadata.name }));
+
+        } catch (error) {
+            console.error('Error assembling or downloading file:', error);
+            showToast(getTranslation('fileAssemblyError'), true);
+            downloadIcon.textContent = '❌';
+            downloadMessage.textContent = getTranslation('fileAssemblyError');
+             // Don't abort here as transfer is done, but indicate failure
+        } finally {
+             // Clean up resources regardless of assembly success/failure
+             // Maybe close channels after a small delay
+             setTimeout(() => {
+                  closeDataChannels();
+                  closePeerConnection();
+                  // Don't reset RTC variables here if we want the download link to persist
+                  // resetRTCVariables(); 
+             }, 2000);
+        }
+    }
+
+    // Reset WebRTC related variables
+    function resetRTCVariables() {
+        closeDataChannels(); // Use helper to close existing channels
+        closePeerConnection(); // Use helper to close peer connection
+
+        // Reset state variables
+        selectedFile = null;
+        fileReader = null;
+        receivedSize = 0;
+        receivedData = [];
+        sendingProgress = 0;
+        receivingInProgress = false;
+        fileMetadata = { name: '', size: 0, type: '' };
+        sharedKey = null; // Reset shared key
+        keyPair = null; // Reset own key pair
+
+        // --- Start: Reset multi-channel variables ---
+        dataChannels = [];
+        openDataChannels = 0;
+        channelStates = [];
+        receiveBuffers = {};
+        segmentStatus = {};
+        totalSegments = 0;
+        segmentsReceived = 0;
+         transferCompleteFlag = false; // Reset completion flag
+        // --- End: Reset multi-channel variables ---
+    }
 });
