@@ -17,6 +17,7 @@ const translations = {
         "receiverConnected": "Receiver connected. Exchanging keys & signals...",
         "sendingFile": "Sending file...",
         "fileSuccessfullySent": "File successfully sent to receiver!",
+        "sendingProgress": "Sending {percent}%...",
         
         // Download section
         "downloadFile": "Download File",
@@ -119,6 +120,7 @@ const translations = {
         "receiverConnected": "Alıcı bağlandı. Anahtar ve sinyal alışverişi yapılıyor...",
         "sendingFile": "Dosya gönderiliyor...",
         "fileSuccessfullySent": "Dosya başarıyla alıcıya iletildi!",
+        "sendingProgress": "Gönderiliyor {percent}%...",
         
         // Download section
         "downloadFile": "Dosya İndir",
