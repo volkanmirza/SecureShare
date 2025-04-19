@@ -735,18 +735,31 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Get translation based on current language
-    function getTranslation(key) {
+    function getTranslation(key, replacements = {}) {
         // Ensure appConfig and translations are loaded
-         if (!window.appConfig || !window.appConfig.translations) {
+        if (!window.appConfig || !window.appConfig.translations) {
              console.warn('Translations not available yet.');
-             return key; // Return the key itself as fallback
+             // Fallback: Try to replace placeholders even if translations aren't loaded
+             let fallbackText = key;
+             Object.keys(replacements).forEach(placeholder => {
+                 fallbackText = fallbackText.replace(`{${placeholder}}`, replacements[placeholder]);
+             });
+             return fallbackText;
          }
         
         const currentLang = localStorage.getItem('preferredLanguage') || 
                            window.appConfig.getPreferredLanguage(); // Use the exposed function
         
          // Access translations via window.appConfig
-         return window.appConfig.translations[currentLang]?.[key] || key; // Use optional chaining and return key as fallback
+         let translatedText = window.appConfig.translations[currentLang]?.[key] || key;
+         
+         // Replace placeholders
+         Object.keys(replacements).forEach(placeholder => {
+             const regex = new RegExp(`\{${placeholder}\}`, 'g'); // Use regex for global replacement
+             translatedText = translatedText.replace(regex, replacements[placeholder]);
+         });
+         
+         return translatedText;
     }
     
     // Create a secure random code
