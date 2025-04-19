@@ -323,11 +323,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // Automatically attempt to connect after a short delay 
             // to ensure WebSocket is likely ready and UI updates are visible
             setTimeout(() => {
+                // *** 1. POTANSİYEL SORUN: Buton durumu ***
+                console.log(`Checking button state before auto-click. Disabled: ${receiveBtn.disabled}`); // BUTON DURUMUNU LOGLAYALIM
                 if (receiveBtn.disabled === false) { // Only click if not already disabled
                     console.log('Auto-clicking connect button...');
-                    receiveBtn.click();
+                    receiveBtn.click(); // Trigger the click event
+                } else {
+                     console.log('Auto-click skipped: Receive button is disabled.'); // Neden atlandığını loglayalım
                 }
-            }, 500); // 500ms delay
+            }, 750); // Gecikmeyi biraz artırdık (750ms)
         }
     } catch (e) {
         console.error("Error processing URL parameters:", e);
