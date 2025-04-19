@@ -90,6 +90,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // --- Start: Added for multi-channel ---
     const NUM_CHANNELS = 4; // Number of data channels for parallel transfer
+    let isAborting = false; // <<< MOVED Global abort flag HERE
+    let transferCompleteFlag = false; // <<< MOVED Global completion flag HERE
     let dataChannels = []; // Array to hold all data channels
     let openDataChannels = 0; // Counter for open data channels
     let channelStates = []; // To track readiness of each channel for sending
@@ -97,6 +99,14 @@ document.addEventListener('DOMContentLoaded', function() {
     let segmentStatus = {}; // To track received chunks per segment { segmentIndex: { received: count, total: count, buffer: [] } }
     let totalSegments = 0; // Total segments expected
     let segmentsReceived = 0; // Count of fully received segments
+    
+    // Global değişkenler - segment yönetimi için
+    let segmentOffsets = []; // Kanal başına segment offset değerleri
+    let segmentEndOffsets = []; // Kanal başına segment bitiş offset değerleri
+    let currentChunkIndices = []; // Kanal başına chunk indeksleri
+    let totalChunksPerSegment = []; // Kanal başına toplam chunk sayısı
+    let totalFileSize = 0; // Toplam dosya boyutu
+    let errorCounts = []; // Her kanal için hata sayacı
     // --- End: Added for multi-channel ---
     
     // File metadata
@@ -171,64 +181,131 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function encryptData(key, data) {
-        const iv = crypto.getRandomValues(new Uint8Array(12)); // AES-GCM recommended IV size
-        const encodedData = new TextEncoder().encode(JSON.stringify(data)); // Ensure data is ArrayBuffer
-        const ciphertext = await crypto.subtle.encrypt(
-            { name: "AES-GCM", iv: iv },
-            key,
-            encodedData
-        );
-        return { iv, ciphertext }; // Return both IV and ciphertext
-    }
-
-     async function encryptChunk(key, chunk) {
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        // chunk is already an ArrayBuffer from FileReader
-        const ciphertext = await crypto.subtle.encrypt(
-            { name: "AES-GCM", iv: iv },
-            key,
-            chunk
-        );
-        // Convert ArrayBuffers to something JSON serializable (e.g., base64 or array of numbers)
-         // Using Array.from to convert Uint8Array to a regular array
-        return { iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(ciphertext)) };
+        try {
+            const iv = crypto.getRandomValues(new Uint8Array(12)); // AES-GCM recommended IV size
+            const encodedData = new TextEncoder().encode(JSON.stringify(data)); // Ensure data is ArrayBuffer
+            
+            const ciphertext = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv },
+                key,
+                encodedData
+            );
+            
+            // ArrayBuffer'ları Base64 formatına çevir (JSON-safe)
+            return { 
+                iv: Array.from(iv), // Uint8Array'i düz diziye çevir
+                ciphertext: Array.from(new Uint8Array(ciphertext)) // ArrayBuffer'ı düz diziye çevir
+            };
+        } catch (error) {
+            console.error("Encryption error:", error);
+            throw error;
+        }
     }
 
     async function decryptData(key, iv, ciphertext) {
         try {
-            // Convert iv and ciphertext back to ArrayBuffer/Uint8Array
-            const ivArray = new Uint8Array(iv);
-            const ciphertextArray = new Uint8Array(ciphertext);
+            // Gelen verileri Uint8Array'e çevir
+            let ivArray, ciphertextArray;
+            
+            // iv ve ciphertext'in tipleri farklı olabilir
+            if (Array.isArray(iv)) {
+                ivArray = new Uint8Array(iv);
+            } else if (iv instanceof Uint8Array) {
+                ivArray = iv;
+            } else if (iv instanceof ArrayBuffer) {
+                ivArray = new Uint8Array(iv);
+            } else {
+                throw new Error("IV is not in a valid format");
+            }
+            
+            if (Array.isArray(ciphertext)) {
+                ciphertextArray = new Uint8Array(ciphertext);
+            } else if (ciphertext instanceof Uint8Array) {
+                ciphertextArray = ciphertext;
+            } else if (ciphertext instanceof ArrayBuffer) {
+                ciphertextArray = new Uint8Array(ciphertext);
+            } else {
+                throw new Error("Ciphertext is not in a valid format");
+            }
 
             const decryptedData = await crypto.subtle.decrypt(
                 { name: "AES-GCM", iv: ivArray },
                 key,
                 ciphertextArray
             );
-            const decodedText = new TextDecoder().decode(decryptedData);
-            return JSON.parse(decodedText);
+            
+            // Şifresi çözülen verileri string'e ve sonra JSON'a çevir
+            try {
+                const decodedText = new TextDecoder().decode(decryptedData);
+                return JSON.parse(decodedText);
+            } catch (parseError) {
+                console.error("Error parsing decrypted data:", parseError);
+                throw new Error("Decrypted data could not be parsed as JSON");
+            }
         } catch (error) {
             console.error("Decryption failed:", error);
             showToast(getTranslation('decryptionError'), true);
-            // Handle decryption error appropriately, e.g., close connection or request resend
-            resetUI(); // Example: Reset UI on decryption failure
-            return null; // Indicate failure
+            return null;
         }
     }
-     async function decryptChunk(key, iv, ciphertext) {
+    
+    // Chunk şifreleme/çözme işlemlerini de güncelleyelim    
+    async function encryptChunk(key, chunk) {
         try {
-            const ivArray = new Uint8Array(iv);
-            const ciphertextArray = new Uint8Array(ciphertext);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            // chunk is already an ArrayBuffer from FileReader
+            const ciphertext = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv },
+                key,
+                chunk
+            );
+            
+            // Düz dizilere çevirerek JSON-safe yap
+            return { 
+                iv: Array.from(iv), 
+                ciphertext: Array.from(new Uint8Array(ciphertext))
+            };
+        } catch (error) {
+            console.error("Chunk encryption error:", error);
+            throw error;
+        }
+    }
+
+    async function decryptChunk(key, iv, ciphertext) {
+        try {
+            // Gelen verileri Uint8Array'e çevir
+            let ivArray, ciphertextArray;
+            
+            if (Array.isArray(iv)) {
+                ivArray = new Uint8Array(iv);
+            } else if (iv instanceof Uint8Array) {
+                ivArray = iv;
+            } else if (iv instanceof ArrayBuffer) {
+                ivArray = new Uint8Array(iv);
+            } else {
+                throw new Error("IV is not in a valid format for chunk");
+            }
+            
+            if (Array.isArray(ciphertext)) {
+                ciphertextArray = new Uint8Array(ciphertext);
+            } else if (ciphertext instanceof Uint8Array) {
+                ciphertextArray = ciphertext;
+            } else if (ciphertext instanceof ArrayBuffer) {
+                ciphertextArray = new Uint8Array(ciphertext);
+            } else {
+                throw new Error("Ciphertext is not in a valid format for chunk");
+            }
+
             const decryptedChunk = await crypto.subtle.decrypt(
                 { name: "AES-GCM", iv: ivArray },
                 key,
                 ciphertextArray
             );
-            return decryptedChunk; // Return ArrayBuffer
+            
+            return decryptedChunk; // ArrayBuffer olarak döndür
         } catch (error) {
             console.error("Chunk decryption failed:", error);
             showToast(getTranslation('decryptionError'), true);
-             // Potentially add more robust error handling for chunk decryption failure
             return null;
         }
     }
@@ -618,6 +695,9 @@ document.addEventListener('DOMContentLoaded', function() {
                      sharedKey = null;
                      keyPair = null;
                      
+                     // Transfer işlemini tamamlandı olarak işaretle
+                     transferCompleteFlag = true;
+                     
                      // Show success popup instead of toast
                      showSuccessPopup(getTranslation('transferSuccessPrompt')); 
 
@@ -681,6 +761,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Setup WebSocket file transfer as sender
     async function sendFile() {
+        console.log("Inside sendFile. Checking prerequisites:", 
+            { selectedFile: !!selectedFile, peerConnection: !!peerConnection, openDataChannels, NUM_CHANNELS, sharedKey: !!sharedKey });
+            
         if (!selectedFile || !peerConnection || openDataChannels < NUM_CHANNELS || !sharedKey) {
             console.error('Cannot send file. Prerequisites not met.', 
                 { selectedFile, peerConnection, openDataChannels, sharedKey });
@@ -703,148 +786,411 @@ document.addEventListener('DOMContentLoaded', function() {
             type: selectedFile.type
         };
 
-        // 1. Send Encrypted Metadata (only on the first channel for simplicity)
+        // Metadata gönderimi - düz metin olarak
         try {
-            console.log("Encrypting and sending metadata...");
-            const encryptedMeta = await encryptData(sharedKey, { type: 'fileMeta', payload: fileMetadata });
-            dataChannels[0].send(JSON.stringify(encryptedMeta)); // Send metadata on channel 0
-            console.log("Metadata sent.");
+            console.log("Preparing to send metadata:", fileMetadata);
+            
+            // JSON formatına dönüştür
+            const plainMetadata = {
+                type: 'metadata',
+                name: selectedFile.name,
+                size: selectedFile.size, 
+                fileType: selectedFile.type || 'application/octet-stream'
+            };
+            
+            // Basit ve güvenilir metin olarak gönder
+            const metadataStr = JSON.stringify(plainMetadata);
+            console.log("Sending plain metadata as text:", metadataStr);
+            
+            // Kanalı kontrol et
+            const channel0 = dataChannels[0];
+            if (!channel0 || channel0.readyState !== 'open') {
+                throw new Error("Channel 0 not available for metadata send");
+            }
+            
+            // Metadata'yı düz metin olarak gönder
+            channel0.send(metadataStr);
+            console.log("Metadata sent as plain text, length:", metadataStr.length);
+            
+            // Segment hesaplama ve değişkenleri hazırlama
+            totalFileSize = selectedFile.size;
+            const segmentSize = Math.ceil(totalFileSize / NUM_CHANNELS);
+            
+            // Global değişkenleri ayarla
+            segmentOffsets = Array(NUM_CHANNELS).fill(0).map((_, i) => i * segmentSize);
+            segmentEndOffsets = segmentOffsets.map((offset, i) => Math.min(offset + segmentSize, totalFileSize));
+            currentChunkIndices = Array(NUM_CHANNELS).fill(0);
+            totalChunksPerSegment = segmentOffsets.map((offset, i) => Math.ceil((segmentEndOffsets[i] - offset) / CHUNK_SIZE));
+            errorCounts = Array(NUM_CHANNELS).fill(0);
+
+            console.log(`File Size: ${totalFileSize}, Channels: ${NUM_CHANNELS}, Segment Size: ${segmentSize}`);
+            console.log(`Segment Offsets: ${segmentOffsets}`);
+            console.log(`Segment End Offsets: ${segmentEndOffsets}`);
+            console.log(`Total Chunks per Segment: ${totalChunksPerSegment}`);
+            
+            // Segment gönderme işlemlerini başlat
+            for (let i = 0; i < NUM_CHANNELS; i++) {
+                if (segmentOffsets[i] < segmentEndOffsets[i]) {
+                    setTimeout(() => readAndSendSegmentChunk(i), 100 + (i * 50)); // Gecikme ile başlat, her kanal için biraz daha fazla
+                }
+            }
+            
         } catch (error) {
             console.error('Error sending metadata:', error);
             showToast(getTranslation('metadataError'), true);
             abortTransfer();
-            return;
         }
-
-        // 2. Prepare for chunk sending
-        const totalFileSize = selectedFile.size;
-        // Determine segment size - aim for roughly equal segments per channel
-        const segmentSize = Math.ceil(totalFileSize / NUM_CHANNELS);
-        let currentSegmentIndex = 0;
-        let currentOffset = 0;
-
-        fileReader = new FileReader();
-
-        // Keep track of progress per channel/segment
-        let segmentOffsets = Array(NUM_CHANNELS).fill(0).map((_, i) => i * segmentSize);
-        let segmentEndOffsets = segmentOffsets.map((offset, i) => Math.min(offset + segmentSize, totalFileSize));
-        let currentChunkIndices = Array(NUM_CHANNELS).fill(0);
-        let totalChunksPerSegment = segmentOffsets.map((offset, i) => Math.ceil((segmentEndOffsets[i] - offset) / CHUNK_SIZE));
-
-        console.log(`File Size: ${totalFileSize}, Channels: ${NUM_CHANNELS}, Segment Size: ${segmentSize}`);
-        console.log(`Segment Offsets: ${segmentOffsets}`);
-        console.log(`Segment End Offsets: ${segmentEndOffsets}`);
-        console.log(`Total Chunks per Segment: ${totalChunksPerSegment}`);
-
-        // Function to read and send the next chunk for a specific channel/segment
-        async function readAndSendSegmentChunk(channelIndex) {
-            if (segmentOffsets[channelIndex] >= segmentEndOffsets[channelIndex]) {
-                // Segment complete for this channel
-                console.log(`Segment ${channelIndex} completed sending.`);
-                // Optionally mark this channel as done for this segment
-                return; 
+    }
+    
+    // Gelen data channel mesajlarını işlemeyi tamamen yenileyelim
+    async function handleDataChannelMessage(event) {
+        // Önce veri tipini analiz edelim
+        console.log(`Received message on channel ${event.target.label}, type: ${typeof event.data}`);
+        
+        if (typeof event.data === 'string') {
+            // Metin mesaj olarak işle - büyük olasılıkla metadata
+            try {
+                const message = JSON.parse(event.data);
+                console.log("Parsed message:", message);
+                
+                // Metadata mesajını işleme
+                if (message.type === 'metadata') {
+                    console.log("Received file metadata:", message);
+                    
+                    if (!message.name || typeof message.size !== 'number') {
+                        console.error("Invalid metadata format or missing fields");
+                        showToast(getTranslation('metadataError'), true);
+                        return;
+                    }
+                    
+                    // Metadata'yı kaydet
+                    fileMetadata = {
+                        name: message.name,
+                        size: message.size,
+                        type: message.fileType || 'application/octet-stream'
+                    };
+                    
+                    // Transfer durumunu başlat
+                    receivingInProgress = true;
+                    receivedSize = 0;
+                    segmentsReceived = 0;
+                    transferCompleteFlag = false;
+                    
+                    // Beklenen segmentleri hesapla
+                    const totalFileSize = fileMetadata.size;
+                    const segmentSize = Math.ceil(totalFileSize / NUM_CHANNELS);
+                    totalSegments = NUM_CHANNELS;
+                    segmentStatus = {};
+                    
+                    for (let i = 0; i < totalSegments; i++) {
+                        const start = i * segmentSize;
+                        const end = Math.min(start + segmentSize, totalFileSize);
+                        const expectedChunks = Math.ceil((end - start) / CHUNK_SIZE);
+                        
+                        segmentStatus[i] = { 
+                            received: 0, 
+                            total: expectedChunks,
+                            buffer: new Array(expectedChunks),
+                            isComplete: false,
+                            startIndex: start,
+                            endIndex: end
+                        };
+                    }
+                    
+                    console.log(`Expecting ${totalSegments} segments:`, segmentStatus);
+                    
+                    // UI güncelleme
+                    downloadIcon.textContent = '📥';
+                    downloadMessage.textContent = getTranslation('receivingFile', { filename: fileMetadata.name });
+                    progressContainer.classList.remove('hidden');
+                    fileInfo.textContent = `${fileMetadata.name} (0 B / ${formatFileSize(fileMetadata.size)})`;
+                    progressBar.style.width = '0%';
+                    progressPercent.textContent = '0%';
+                    
+                    // Başarı mesajı
+                    showToast(getTranslation('transferStarted'), false);
+                    return;
+                }
+            } catch (error) {
+                console.error("Error processing text message:", error);
+                if (!receivingInProgress) {
+                    showToast(getTranslation('metadataError'), true);
+                }
+                return;
             }
-
-            const start = segmentOffsets[channelIndex];
-            const end = Math.min(start + CHUNK_SIZE, segmentEndOffsets[channelIndex]);
-            const blobSlice = selectedFile.slice(start, end);
+        } 
+        
+        // Binary veri olarak işleme - dosya parçası olmalı
+        if (event.data instanceof ArrayBuffer) {
+            if (!receivingInProgress || !sharedKey) {
+                console.warn('Received file chunk unexpectedly or without shared key.', { receivingInProgress, hasSharedKey: !!sharedKey });
+                return;
+            }
             
             try {
-                 const chunkData = await blobSlice.arrayBuffer(); // Read chunk as ArrayBuffer
-                 segmentOffsets[channelIndex] = end; // Update offset for the next chunk *within this segment*
-
-                 // Encrypt the chunk
-                 const encrypted = await encryptChunk(sharedKey, chunkData);
-                 if (!encrypted) throw new Error("Chunk encryption failed");
-
-                 // Prepare header (12 bytes: segmentIndex, chunkIndex, totalChunksInSegment)
-                 const header = new ArrayBuffer(12);
-                 const headerView = new DataView(header);
-                 headerView.setUint32(0, channelIndex, true); // Segment Index (using channel index as segment index for now)
-                 headerView.setUint32(4, currentChunkIndices[channelIndex], true); // Chunk Index within segment
-                 headerView.setUint32(8, totalChunksPerSegment[channelIndex], true); // Total chunks in this segment
-                 currentChunkIndices[channelIndex]++; // Increment chunk index
-
-                 // Combine header and encrypted chunk data
-                 const encryptedChunkArray = new Uint8Array(encrypted.ciphertext);
-                 const ivArray = new Uint8Array(encrypted.iv); // IV needed for decryption
-                 const payload = new Uint8Array(header.byteLength + ivArray.length + encryptedChunkArray.length);
-                 payload.set(new Uint8Array(header), 0);
-                 payload.set(ivArray, header.byteLength);
-                 payload.set(encryptedChunkArray, header.byteLength + ivArray.length);
-
-                 // Send the combined data
-                 const channel = dataChannels[channelIndex];
-
-                 // Check for backpressure before sending
-                 if (channel.bufferedAmount > channel.bufferedAmountLowThreshold * 2) { // More aggressive check
-                      console.warn(`Channel ${channelIndex} buffer full (${channel.bufferedAmount}). Pausing slightly.`);
-                      channelStates[channelIndex] = false; // Mark as busy
-                      // Wait for bufferedAmountLow or use setTimeout as a fallback
-                      await new Promise(resolve => {
-                           const checkBuffer = () => {
-                                if (channel.bufferedAmount <= channel.bufferedAmountLowThreshold) {
-                                     channelStates[channelIndex] = true;
-                                     resolve();
-                                } else {
-                                     setTimeout(checkBuffer, 50); // Check again shortly
-                                }
-                           };
-                           channel.onbufferedamountlow = () => {
-                                channelStates[channelIndex] = true;
-                                console.log(`BufferedAmountLow triggered for channel ${channelIndex}`);
-                                resolve();
-                                channel.onbufferedamountlow = null; // Clean up listener
-                           };
-                           setTimeout(checkBuffer, 100); // Fallback timeout check
-                      });
-                      console.log(`Channel ${channelIndex} buffer cleared. Resuming send.`);
-                 }
-
-                 if (channel.readyState === 'open') {
-                      channel.send(payload.buffer);
-                      sendingProgress += chunkData.byteLength; // Update global progress
-
-                      // Update UI (maybe less frequently for performance)
-                      if (currentChunkIndices[channelIndex] % 10 === 0 || segmentOffsets[channelIndex] >= segmentEndOffsets[channelIndex]) {
-                           const percent = Math.min(100, Math.floor((sendingProgress / totalFileSize) * 100));
-                            // Update a general progress indicator if needed, or rely on receiver progress
-                            statusSender.textContent = getTranslation('sendingProgress', { percent: percent });
-                      }
-                 } else {
-                      console.warn(`Channel ${channelIndex} is not open. State: ${channel.readyState}. Aborting segment.`);
-                      // Handle channel being closed unexpectedly during send
-                      abortTransfer();
-                      return; // Stop sending on this channel
-                 }
-
-                 // Continue sending chunks for this segment
-                 if (segmentOffsets[channelIndex] < segmentEndOffsets[channelIndex]) {
-                     // Use requestAnimationFrame or setTimeout(0) for better responsiveness
-                     // requestAnimationFrame(() => readAndSendSegmentChunk(channelIndex)); 
-                     setTimeout(() => readAndSendSegmentChunk(channelIndex), 0);
-                 } else {
-                     console.log(`Finished sending segment ${channelIndex}`);
-                     // Check if all segments are done
-                     if (sendingProgress >= totalFileSize) {
-                         handleSendComplete();
-                     }
-                 }
-
+                const rawData = event.data; // ArrayBuffer olarak alındı
+                if (rawData.byteLength < 12) {
+                    console.error('Invalid chunk data received. Too small for header.');
+                    return;
+                }
+                
+                // Header bilgilerini oku (12 byte)
+                const headerView = new DataView(rawData, 0, 12);
+                const segmentIndex = headerView.getUint32(0, true);
+                const chunkIndex = headerView.getUint32(4, true);
+                const totalChunksInSegment = headerView.getUint32(8, true);
+                
+                // IV ve şifreli veriyi çıkar
+                const iv = rawData.slice(12, 24); // 12 bytes AES-GCM IV
+                const ciphertext = rawData.slice(24);
+                
+                if (segmentIndex < 0 || segmentIndex >= totalSegments) {
+                    console.error(`Invalid segment index ${segmentIndex}. Expected 0-${totalSegments-1}`);
+                    return;
+                }
+                
+                // Chunk'ı şifresini çöz
+                const decryptedChunk = await decryptChunk(sharedKey, new Uint8Array(iv), new Uint8Array(ciphertext));
+                if (!decryptedChunk) {
+                    console.error(`Failed to decrypt chunk: Segment ${segmentIndex}, Chunk ${chunkIndex}`);
+                    return;
+                }
+                
+                // Segment durumunu bul ve güncelle
+                const segment = segmentStatus[segmentIndex];
+                if (!segment) {
+                    console.error(`Segment status not found for index ${segmentIndex}`);
+                    return;
+                }
+                
+                // Chunk bilgilerini güncelle
+                if (segment.total !== totalChunksInSegment) {
+                    console.log(`Updating total chunks for segment ${segmentIndex}: ${segment.total} -> ${totalChunksInSegment}`);
+                    segment.total = totalChunksInSegment;
+                    if (segment.buffer.length < totalChunksInSegment) {
+                        segment.buffer = new Array(totalChunksInSegment);
+                    }
+                }
+                
+                // Chunk'ı depola
+                if (chunkIndex >= 0 && chunkIndex < segment.total && !segment.buffer[chunkIndex]) {
+                    segment.buffer[chunkIndex] = decryptedChunk;
+                    segment.received++;
+                    receivedSize += decryptedChunk.byteLength;
+                    
+                    // İlerlemeyi güncelle
+                    if (fileMetadata.size > 0) {
+                        const percent = Math.min(100, Math.floor((receivedSize / fileMetadata.size) * 100));
+                        progressBar.style.width = percent + '%';
+                        progressPercent.textContent = percent + '%';
+                        fileInfo.textContent = `${fileMetadata.name} (${formatFileSize(receivedSize)} / ${formatFileSize(fileMetadata.size)})`;
+                    }
+                    
+                    // Segment tamamlandı mı kontrol et
+                    if (!segment.isComplete && segment.received === segment.total) {
+                        segment.isComplete = true;
+                        segmentsReceived++;
+                        console.log(`Segment ${segmentIndex} completed (${segment.received}/${segment.total}). Total segments: ${segmentsReceived}/${totalSegments}`);
+                        
+                        // Tüm segmentler tamamlandı mı?
+                        if (segmentsReceived === totalSegments) {
+                            handleReceiveComplete();
+                        }
+                    }
+                } else {
+                    console.warn(`Invalid chunk: Segment ${segmentIndex}, Chunk ${chunkIndex}, Already received: ${!!segment.buffer[chunkIndex]}`);
+                }
             } catch (error) {
-                 console.error(`Error reading/sending chunk for channel ${channelIndex}:`, error);
-                 showToast(getTranslation('chunkReadSendError'), true);
-                 abortTransfer();
+                console.error("Error processing binary chunk:", error);
+                // Birkaç hatalı chunk kabul edilebilir, abort yerine hata sayacı kullanılabilir
+            }
+        } else {
+            console.warn("Received unsupported data type:", typeof event.data);
+        }
+    }
+    
+    // encryptChunk fonksiyonunu güncelle - şifreli veriyi binary formatta döndür
+    async function encryptChunk(key, chunk) {
+        try {
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const ciphertext = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv },
+                key,
+                chunk
+            );
+            
+            // ArrayBuffer olarak döndür - daha verimli 
+            return { 
+                iv: iv.buffer, 
+                ciphertext: ciphertext 
+            };
+        } catch (error) {
+            console.error("Chunk encryption error:", error);
+            throw error;
+        }
+    }
+    
+    // readAndSendSegmentChunk fonksiyonunu kapsamlı olarak düzeltelim
+    async function readAndSendSegmentChunk(channelIndex) {
+        // Abort kontrolü
+        if (isAborting || transferCompleteFlag) {
+            console.log(`[Channel ${channelIndex}] Abort flag set or transfer complete, stopping send loop.`);
+            return;
+        }
+        
+        // Kanal kontrolü
+        const channel = dataChannels[channelIndex];
+        if (!channel || channel.readyState !== 'open') {
+            console.warn(`[Channel ${channelIndex}] Channel not available or not open.`);
+            return;
+        }
+        
+        // Segment tamamlandı mı kontrolü
+        if (segmentOffsets[channelIndex] >= segmentEndOffsets[channelIndex]) {
+            console.log(`Segment ${channelIndex} completed sending.`);
+            
+            // Tüm segmentlerin tamamlanıp tamamlanmadığını kontrol et
+            let allSegmentsComplete = true;
+            for (let i = 0; i < NUM_CHANNELS; i++) {
+                if (segmentOffsets[i] < segmentEndOffsets[i]) {
+                    allSegmentsComplete = false;
+                    break;
+                }
+            }
+            
+            if (allSegmentsComplete && !transferCompleteFlag && !isAborting) {
+                console.log("All segments completed successfully!");
+                handleSendComplete();
+            }
+            
+            return;
+        }
+        
+        // Chunk'ı oku ve gönder
+        const start = segmentOffsets[channelIndex];
+        const end = Math.min(start + CHUNK_SIZE, segmentEndOffsets[channelIndex]);
+        const blobSlice = selectedFile.slice(start, end);
+        
+        try {
+            const chunkData = await blobSlice.arrayBuffer();
+            if (isAborting || transferCompleteFlag) return;
+            if (!channel || channel.readyState !== 'open') return;
+            
+            segmentOffsets[channelIndex] = end;
+            
+            // Chunk şifreleme
+            if (!sharedKey) throw new Error("Shared key missing");
+            const encrypted = await encryptChunk(sharedKey, chunkData);
+            
+            if (isAborting || transferCompleteFlag) return;
+            if (!channel || channel.readyState !== 'open') return;
+            
+            // Header bilgileri
+            const header = new ArrayBuffer(12);
+            const headerView = new DataView(header);
+            headerView.setUint32(0, channelIndex, true); // Segment index
+            headerView.setUint32(4, currentChunkIndices[channelIndex], true); // Chunk index 
+            headerView.setUint32(8, totalChunksPerSegment[channelIndex], true); // Total chunks
+            currentChunkIndices[channelIndex]++;
+            
+            // Tüm verileri tek bir ArrayBuffer'a birleştir
+            const ivBuffer = encrypted.iv;
+            const ciphertextBuffer = encrypted.ciphertext;
+            
+            const combinedBuffer = new ArrayBuffer(header.byteLength + ivBuffer.byteLength + ciphertextBuffer.byteLength);
+            const combinedView = new Uint8Array(combinedBuffer);
+            
+            combinedView.set(new Uint8Array(header), 0);
+            combinedView.set(new Uint8Array(ivBuffer), header.byteLength);
+            combinedView.set(new Uint8Array(ciphertextBuffer), header.byteLength + ivBuffer.byteLength);
+            
+            // Buffer kontrolü
+            if (channel.bufferedAmount > channel.bufferedAmountLowThreshold * 2) {
+                console.warn(`Channel ${channelIndex} buffer full (${channel.bufferedAmount}). Pausing slightly.`);
+                channelStates[channelIndex] = false;
+                
+                try {
+                    // Timeout ile buffer bekleme
+                    await new Promise((resolve, reject) => {
+                        const timeoutId = setTimeout(() => {
+                            channel.onbufferedamountlow = null;
+                            channelStates[channelIndex] = true;
+                            resolve();
+                        }, 2000);
+                        
+                        const checkBuffer = () => {
+                            if (channel.bufferedAmount <= channel.bufferedAmountLowThreshold) {
+                                clearTimeout(timeoutId);
+                                channelStates[channelIndex] = true;
+                                resolve();
+                            } else if (!channel || channel.readyState !== 'open') {
+                                clearTimeout(timeoutId);
+                                reject(new Error("Channel closed while waiting for buffer"));
+                            } else {
+                                setTimeout(checkBuffer, 50);
+                            }
+                        };
+                        
+                        channel.onbufferedamountlow = () => {
+                            clearTimeout(timeoutId);
+                            channelStates[channelIndex] = true;
+                            console.log(`BufferedAmountLow triggered for channel ${channelIndex}`);
+                            resolve();
+                            channel.onbufferedamountlow = null;
+                        };
+                        
+                        checkBuffer();
+                    });
+                } catch (error) {
+                    console.warn(`Buffer wait error for channel ${channelIndex}:`, error);
+                    return;
+                }
+                
+                if (isAborting || transferCompleteFlag) return;
+                if (!channel || channel.readyState !== 'open') return;
+                
+                console.log(`Channel ${channelIndex} buffer cleared. Resuming send.`);
+            }
+            
+            // Son kontrol ve veri gönderimi
+            if (isAborting || transferCompleteFlag || !channel || channel.readyState !== 'open') {
+                console.warn(`[Channel ${channelIndex}] Condition changed before send. Stopping.`);
+                return;
+            }
+            
+            channel.send(combinedBuffer);
+            sendingProgress += chunkData.byteLength;
+            
+            // UI güncelleme
+            if (currentChunkIndices[channelIndex] % 10 === 0 || segmentOffsets[channelIndex] >= segmentEndOffsets[channelIndex]) {
+                const percent = Math.min(100, Math.floor((sendingProgress / totalFileSize) * 100));
+                statusSender.textContent = getTranslation('sendingProgress', { percent: percent });
+            }
+            
+        } catch (error) {
+            console.error(`Error reading/sending chunk for channel ${channelIndex}:`, error);
+            
+            if (!isAborting && !transferCompleteFlag) {
+                if (errorCounts[channelIndex] >= 3) {
+                    showToast(getTranslation('chunkReadSendError'), true);
+                    abortTransfer();
+                } else {
+                    errorCounts[channelIndex]++;
+                    console.warn(`Incremented error count for channel ${channelIndex} to ${errorCounts[channelIndex]}`);
+                }
             }
         }
-
-        // Start sending chunks for all segments in parallel
-        console.log("Initiating parallel chunk sending across channels...");
-        for (let i = 0; i < NUM_CHANNELS; i++) {
-             if (segmentOffsets[i] < segmentEndOffsets[i]) { // Only start if segment has data
-                  // Use setTimeout to avoid blocking the main thread immediately
-                 setTimeout(() => readAndSendSegmentChunk(i), 0);
-             }
+        
+        // Sonraki chunk'a geçiş
+        if (segmentOffsets[channelIndex] < segmentEndOffsets[channelIndex]) {
+            if (!isAborting && !transferCompleteFlag) {
+                const channel = dataChannels[channelIndex];
+                if (channel && channel.readyState === 'open') {
+                    setTimeout(() => readAndSendSegmentChunk(channelIndex), 0);
+                } else {
+                    console.warn(`[Channel ${channelIndex}] Channel closed before queueing next chunk.`);
+                }
+            }
         }
     }
 
@@ -869,6 +1215,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reset UI to initial state
     function resetUI() {
         console.log("Resetting UI and state.");
+        isAborting = false; // <<< ADDED: Reset abort flag here
+        transferCompleteFlag = false; // Also reset completion flag for safety
         // Reset file input and related UI
         if (fileInput) fileInput.value = ''; // Clear file input
         if (filePrompt) filePrompt.classList.remove('hidden'); // <-- Make prompt visible again
@@ -914,6 +1262,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fileReader) {
             // Check readyState before aborting. 0 = EMPTY, 1 = LOADING, 2 = DONE
             if (fileReader.readyState === 1) {
+                 console.log("Aborting file reader...");
                  fileReader.abort();
             }
             fileReader = null;
@@ -1266,15 +1615,24 @@ document.addEventListener('DOMContentLoaded', function() {
             peerConnection.oniceconnectionstatechange = () => {
                 if (peerConnection) {
                     console.log(`---> ICE Connection State Changed: ${peerConnection.iceConnectionState}`); // MODIFIED Log
+                    
+                    // Başarılı transfer sonrası kapanmalar için kontrol ekle
                     if (['disconnected', 'failed', 'closed'].includes(peerConnection.iceConnectionState)) {
-                        // Handle connection failure more gracefully
-                        if (receivingInProgress || sendingProgress > 0) {
-                             showToast(getTranslation('connectionInterrupted'), true);
+                        // Transfer başarılıysa veya tamamlanmışsa, hata mesajı gösterme
+                        if (transferCompleteFlag) {
+                            console.log("ICE connection closed after successful transfer");
+                            return; // Başarılı tamamlanma sonrası bağlantı kapanmasını yok say
                         }
-                       // Clean up resources
-                       closeDataChannels();
-                       closePeerConnection();
-                       resetUI(); // Reset UI to allow retry
+                        
+                        // Transfer devam ediyorsa veya tamamlanmadıysa uyarı göster
+                        if (receivingInProgress || sendingProgress > 0) {
+                            showToast(getTranslation('connectionInterrupted'), true);
+                        }
+                        
+                        // Clean up resources
+                        closeDataChannels();
+                        closePeerConnection();
+                        resetUI(); // Reset UI to allow retry
                     }
                 }
             };
@@ -1290,8 +1648,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     dataChannels.push(channel);
                 }
             } else {
+                console.log("Receiver: Setting up ondatachannel listener..."); // ADDED
                 peerConnection.ondatachannel = event => {
-                    console.log('Data channel received:', event.channel.label);
+                    console.log('---> ONDATACHANNEL EVENT RECEIVED:', event.channel.label); // ADDED
                     const channel = event.channel;
                     // Simple way to get index from label, assuming 'fileChannel-N' format
                     const channelIndex = parseInt(channel.label.split('-')[1], 10);
@@ -1336,6 +1695,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Check if all channels are open 
         if (openDataChannels === NUM_CHANNELS) {
             console.log("All channels reported open.");
+            // ADDED: Log state just before the check
+            console.log(`Checking condition to start send/receive: selectedFile=${!!selectedFile}, receivingInProgress=${receivingInProgress}`);
             if (selectedFile && !receivingInProgress) { // Check if it's the sender
                 console.log("Sender: All channels open, calling sendFile().");
                 sendFile(); // Now async, will be called here
@@ -1352,24 +1713,49 @@ document.addEventListener('DOMContentLoaded', function() {
          channelStates[index] = false; // Mark channel as not ready
          openDataChannels = Math.max(0, openDataChannels - 1); // Decrement safely
 
-         // If a channel closes unexpectedly during transfer, abort.
-         // We need a reliable way to know if the closure was expected (end of transfer) or not.
-         // For now, any closure during active transfer might indicate an error.
-         if (receivingInProgress || (sendingProgress > 0 && sendingProgress < selectedFile?.size)) {
-              if (!transferCompleteFlag) { // Add a flag to indicate normal completion
-                 console.error(`Channel ${index} closed unexpectedly during transfer.`);
-                 showToast(getTranslation('transferAbortedChannelClose'), true);
-                 abortTransfer(); // Implement this function to clean up
-             }
+         // Transfer işlemi aktif durumdaysa ve bu beklenmedik bir kapanma ise
+         if ((receivingInProgress || (sendingProgress > 0 && sendingProgress < selectedFile?.size))) {
+            // Eğer transfer işlemi zaten sonlandıysa veya iptal edildiyse, normal bir kapanmadır
+            if (isAborting || transferCompleteFlag) {
+                console.log(`Channel ${index} closed as part of normal abort/complete process.`);
+                return; // Normal kapanma, işlem yapmaya gerek yok
+            }
+            
+            // Transfer devam ederken beklenmedik kapanma - son kanala kadar bekle
+            console.error(`Channel ${index} closed unexpectedly during transfer.`);
+            
+            // Açık kanal sayısını kontrol et
+            if (openDataChannels <= 0) {
+                // Hiç açık kanal kalmadıysa ve transfer tamamlanmadıysa, iptal et
+                if (!transferCompleteFlag) {
+                    console.error("All channels closed unexpectedly, aborting transfer.");
+                    showToast(getTranslation('transferAbortedChannelClose'), true);
+                    abortTransfer();
+                } else {
+                    // Transfer tamamlandıysa, kanalların beklendiği gibi kapandığını varsay
+                    console.log("All channels closed after transfer completion, normal shutdown.");
+                }
+            } else {
+                console.warn(`Channel ${index} closed unexpectedly, but ${openDataChannels} channels still open. Attempting to continue...`);
+            }
          }
-         // If it's the receiver and all channels closed AFTER receiving all data, it's normal.
      }
 
      function handleDataChannelError(error, channel, index) {
          console.error(`Data channel ${index} (${channel.label}) error:`, error);
+         // Eğer kapanma nedeniyle hata oluştuysa, bu normal bir durum
+         if (isAborting || transferCompleteFlag || error?.error?.message?.includes('User-Initiated Abort')) {
+             console.log(`Ignoring expected error for channel ${index} during abort/close.`);
+             return; // Normal kapanma hatalarını yok sayalım ve abortTransfer'i çağırmayalım
+         }
+         
          showToast(`${getTranslation('channelError')} (${channel.label}): ${error.error?.message || error}`, true);
          channelStates[index] = false; // Mark channel as not ready
-         abortTransfer(); // Abort on any channel error
+         
+         // Yalnızca beklenmeyen hatalarda abort işlemini çağıralım
+         if (!isAborting && !transferCompleteFlag) {
+             abortTransfer(); // Abort on any unexpected channel error
+         }
      }
 
      function handleBufferedAmountLow(channel, index) {
@@ -1415,20 +1801,42 @@ document.addEventListener('DOMContentLoaded', function() {
      }
 
      // Abort transfer function (basic version)
-     let transferCompleteFlag = false; // Flag to prevent abort messages on normal completion
      function abortTransfer() {
-          if (transferCompleteFlag) return; // Don't abort if normally completed
-
+          if (isAborting) return; // Prevent multiple concurrent aborts
+          isAborting = true; // Set flag immediately
           console.error("Aborting transfer...");
+
+          // Daha kontrollü bir kapatma sırası uygulayalım
+          // Önce fileReader'ı durdurarak yeni veri okuma/gönderme işlemlerini engelleyelim
           if (fileReader) {
-              fileReader.abort();
+              // Check readyState before aborting. 0 = EMPTY, 1 = LOADING, 2 = DONE
+              if (fileReader.readyState === 1) {
+                  console.log("Aborting file reader...");
+                  fileReader.abort();
+              }
               fileReader = null;
           }
-          closeDataChannels();
-          closePeerConnection();
-          resetRTCVariables();
-          // Consider resetting receiver state too if applicable
-          resetUI();
+          
+          // Transfer işaretini güncelleyelim
+          transferCompleteFlag = true; 
+          
+          // Kısa bir gecikme ekleyerek işlemlerin tamamlanmasına fırsat verelim
+          setTimeout(() => {
+              closeDataChannels();
+              closePeerConnection();
+              resetRTCVariables(); // Reset RTC specific variables
+              
+              // Optionally, update the UI to show an aborted state without full reset
+              if (statusSender) {
+                  statusSender.textContent = getTranslation('transferAborted'); // Add this translation key
+                  statusSender.classList.remove('hidden');
+              }
+              if (downloadStatus && receivingInProgress) {
+                  downloadIcon.textContent = '❌';
+                  downloadMessage.textContent = getTranslation('transferAborted'); // Add this translation key
+                  progressContainer.classList.add('hidden');
+              }
+          }, 100); // 100ms gecikme ekleyerek işlemlerin düzgün kapanmasına izin verelim
       }
 
 
@@ -1437,151 +1845,168 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle incoming data channel messages (modified for multi-channel)
     async function handleDataChannelMessage(event) {
-        if (!receivingInProgress) {
-            // First message should be metadata (handled on channel 0)
-            if (event.target.label === 'fileChannel-0') { 
-                try {
-                    const encryptedMetadata = JSON.parse(event.data);
-                    if (!sharedKey) { /* ... error handling ... */ return; }
-                    const decryptedPayload = await decryptData(sharedKey, encryptedMetadata.iv, encryptedMetadata.ciphertext);
-
-                    if (decryptedPayload && decryptedPayload.type === 'fileMeta') {
-                        fileMetadata = decryptedPayload.payload;
-                        console.log('Received file metadata:', fileMetadata);
-                        receivingInProgress = true;
-                        receivedSize = 0;
-                        segmentsReceived = 0;
-                        transferCompleteFlag = false;
-
-                        // Calculate expected segments and initialize buffers
-                        const totalFileSize = fileMetadata.size;
-                        const segmentSize = Math.ceil(totalFileSize / NUM_CHANNELS);
-                        totalSegments = NUM_CHANNELS; // One segment per channel
-                         segmentStatus = {};
-                         for (let i = 0; i < totalSegments; i++) {
-                             const start = i * segmentSize;
-                             const end = Math.min(start + segmentSize, totalFileSize);
-                             const expectedChunks = Math.ceil((end - start) / CHUNK_SIZE);
-                             // Store buffer and tracking info per segment
-                             segmentStatus[i] = { 
-                                 received: 0, 
-                                 total: expectedChunks,
-                                 buffer: new Array(expectedChunks), // Pre-allocate buffer array
-                                 isComplete: false,
-                                 startIndex: start,
-                                 endIndex: end
-                             };
-                         }
-                        console.log(`Expecting ${totalSegments} segments. Segment status initialized:`, segmentStatus);
-
-                        // Update UI for receiving
-                        downloadIcon.textContent = '📥';
-                        downloadMessage.textContent = getTranslation('receivingFile', { filename: fileMetadata.name });
-                        progressContainer.classList.remove('hidden');
-                        fileInfo.textContent = `${fileMetadata.name} (0 B / ${formatFileSize(fileMetadata.size)})`;
-                        progressBar.style.width = '0%';
-                        progressPercent.textContent = '0%';
-                    } else {
-                        console.warn('Received unexpected first message or decryption failed on channel 0.');
+        // Önce veri tipini analiz edelim
+        console.log(`Received message on channel ${event.target.label}, type: ${typeof event.data}`);
+        
+        if (typeof event.data === 'string') {
+            // Metin mesaj olarak işle - büyük olasılıkla metadata
+            try {
+                const message = JSON.parse(event.data);
+                console.log("Parsed message:", message);
+                
+                // Metadata mesajını işleme
+                if (message.type === 'metadata') {
+                    console.log("Received file metadata:", message);
+                    
+                    if (!message.name || typeof message.size !== 'number') {
+                        console.error("Invalid metadata format or missing fields");
+                        showToast(getTranslation('metadataError'), true);
+                        return;
                     }
-                } catch (error) {
-                    console.error('Error parsing metadata:', error);
-                    showToast(getTranslation('metadataError'), true);
-                     abortTransfer();
+                    
+                    // Metadata'yı kaydet
+                    fileMetadata = {
+                        name: message.name,
+                        size: message.size,
+                        type: message.fileType || 'application/octet-stream'
+                    };
+                    
+                    // Transfer durumunu başlat
+                    receivingInProgress = true;
+                    receivedSize = 0;
+                    segmentsReceived = 0;
+                    transferCompleteFlag = false;
+                    
+                    // Beklenen segmentleri hesapla
+                    const totalFileSize = fileMetadata.size;
+                    const segmentSize = Math.ceil(totalFileSize / NUM_CHANNELS);
+                    totalSegments = NUM_CHANNELS;
+                    segmentStatus = {};
+                    
+                    for (let i = 0; i < totalSegments; i++) {
+                        const start = i * segmentSize;
+                        const end = Math.min(start + segmentSize, totalFileSize);
+                        const expectedChunks = Math.ceil((end - start) / CHUNK_SIZE);
+                        
+                        segmentStatus[i] = { 
+                            received: 0, 
+                            total: expectedChunks,
+                            buffer: new Array(expectedChunks),
+                            isComplete: false,
+                            startIndex: start,
+                            endIndex: end
+                        };
+                    }
+                    
+                    console.log(`Expecting ${totalSegments} segments:`, segmentStatus);
+                    
+                    // UI güncelleme
+                    downloadIcon.textContent = '📥';
+                    downloadMessage.textContent = getTranslation('receivingFile', { filename: fileMetadata.name });
+                    progressContainer.classList.remove('hidden');
+                    fileInfo.textContent = `${fileMetadata.name} (0 B / ${formatFileSize(fileMetadata.size)})`;
+                    progressBar.style.width = '0%';
+                    progressPercent.textContent = '0%';
+                    
+                    // Başarı mesajı
+                    showToast(getTranslation('transferStarted'), false);
+                    return;
                 }
-            } else {
-                 console.warn(`Received non-metadata message on channel ${event.target.label} before metadata was processed.`);
+            } catch (error) {
+                console.error("Error processing text message:", error);
+                if (!receivingInProgress) {
+                    showToast(getTranslation('metadataError'), true);
+                }
+                return;
             }
-            return; // Don't process file chunks until metadata is received
-        }
-
-        // --- Process File Chunk ---
-        if (!sharedKey) { 
-            console.error("Shared key not available for chunk decryption!");
-            showToast(getTranslation('decryptionError'), true);
-            abortTransfer();
-            return; 
-        }
-
-        try {
-            const rawData = event.data; // Received as ArrayBuffer
-            if (!(rawData instanceof ArrayBuffer) || rawData.byteLength < 12) {
-                console.error('Invalid chunk data received. Expected ArrayBuffer with header.');
-                 // Optional: Request resend or abort
-                 return;
+        } 
+        
+        // Binary veri olarak işleme - dosya parçası olmalı
+        if (event.data instanceof ArrayBuffer) {
+            if (!receivingInProgress || !sharedKey) {
+                console.warn('Received file chunk unexpectedly or without shared key.', { receivingInProgress, hasSharedKey: !!sharedKey });
+                return;
             }
-
-            // Parse Header (12 bytes: segmentIndex, chunkIndex, totalChunksInSegment)
-             const headerView = new DataView(rawData, 0, 12);
-             const segmentIndex = headerView.getUint32(0, true);
-             const chunkIndex = headerView.getUint32(4, true);
-             const totalChunksInSegment = headerView.getUint32(8, true);
-
-             // Extract IV (12 bytes) and Ciphertext
-             const iv = rawData.slice(12, 24); // 12 bytes for AES-GCM IV
-             const ciphertext = rawData.slice(24);
-
-            if (segmentIndex < 0 || segmentIndex >= totalSegments) {
-                 console.error(`Invalid segment index ${segmentIndex} received.`);
-                 return;
+            
+            try {
+                const rawData = event.data; // ArrayBuffer olarak alındı
+                if (rawData.byteLength < 12) {
+                    console.error('Invalid chunk data received. Too small for header.');
+                    return;
+                }
+                
+                // Header bilgilerini oku (12 byte)
+                const headerView = new DataView(rawData, 0, 12);
+                const segmentIndex = headerView.getUint32(0, true);
+                const chunkIndex = headerView.getUint32(4, true);
+                const totalChunksInSegment = headerView.getUint32(8, true);
+                
+                // IV ve şifreli veriyi çıkar
+                const iv = rawData.slice(12, 24); // 12 bytes AES-GCM IV
+                const ciphertext = rawData.slice(24);
+                
+                if (segmentIndex < 0 || segmentIndex >= totalSegments) {
+                    console.error(`Invalid segment index ${segmentIndex}. Expected 0-${totalSegments-1}`);
+                    return;
+                }
+                
+                // Chunk'ı şifresini çöz
+                const decryptedChunk = await decryptChunk(sharedKey, new Uint8Array(iv), new Uint8Array(ciphertext));
+                if (!decryptedChunk) {
+                    console.error(`Failed to decrypt chunk: Segment ${segmentIndex}, Chunk ${chunkIndex}`);
+                    return;
+                }
+                
+                // Segment durumunu bul ve güncelle
+                const segment = segmentStatus[segmentIndex];
+                if (!segment) {
+                    console.error(`Segment status not found for index ${segmentIndex}`);
+                    return;
+                }
+                
+                // Chunk bilgilerini güncelle
+                if (segment.total !== totalChunksInSegment) {
+                    console.log(`Updating total chunks for segment ${segmentIndex}: ${segment.total} -> ${totalChunksInSegment}`);
+                    segment.total = totalChunksInSegment;
+                    if (segment.buffer.length < totalChunksInSegment) {
+                        segment.buffer = new Array(totalChunksInSegment);
+                    }
+                }
+                
+                // Chunk'ı depola
+                if (chunkIndex >= 0 && chunkIndex < segment.total && !segment.buffer[chunkIndex]) {
+                    segment.buffer[chunkIndex] = decryptedChunk;
+                    segment.received++;
+                    receivedSize += decryptedChunk.byteLength;
+                    
+                    // İlerlemeyi güncelle
+                    if (fileMetadata.size > 0) {
+                        const percent = Math.min(100, Math.floor((receivedSize / fileMetadata.size) * 100));
+                        progressBar.style.width = percent + '%';
+                        progressPercent.textContent = percent + '%';
+                        fileInfo.textContent = `${fileMetadata.name} (${formatFileSize(receivedSize)} / ${formatFileSize(fileMetadata.size)})`;
+                    }
+                    
+                    // Segment tamamlandı mı kontrol et
+                    if (!segment.isComplete && segment.received === segment.total) {
+                        segment.isComplete = true;
+                        segmentsReceived++;
+                        console.log(`Segment ${segmentIndex} completed (${segment.received}/${segment.total}). Total segments: ${segmentsReceived}/${totalSegments}`);
+                        
+                        // Tüm segmentler tamamlandı mı?
+                        if (segmentsReceived === totalSegments) {
+                            handleReceiveComplete();
+                        }
+                    }
+                } else {
+                    console.warn(`Invalid chunk: Segment ${segmentIndex}, Chunk ${chunkIndex}, Already received: ${!!segment.buffer[chunkIndex]}`);
+                }
+            } catch (error) {
+                console.error("Error processing binary chunk:", error);
+                // Birkaç hatalı chunk kabul edilebilir, abort yerine hata sayacı kullanılabilir
             }
-
-             // Decrypt the chunk
-             const decryptedChunk = await decryptChunk(sharedKey, new Uint8Array(iv), new Uint8Array(ciphertext));
-             if (!decryptedChunk) {
-                 console.error(`Failed to decrypt chunk: Segment ${segmentIndex}, Chunk ${chunkIndex}`);
-                 showToast(getTranslation('chunkDecryptError'), true);
-                  // Decide how to handle: request resend? Abort?
-                  // For now, might just drop the chunk and potentially fail later.
-                 return;
-             }
-
-             // Store the decrypted chunk in the correct buffer
-             const segment = segmentStatus[segmentIndex];
-             if (!segment) {
-                 console.error(`Segment status not found for index ${segmentIndex}`);
-                 return;
-             }
-
-             // Update total chunks if this is the first chunk received for the segment
-             // This relies on the header being correct. Could add checks.
-             if (segment.total === -1) { 
-                  segment.total = totalChunksInSegment;
-                  segment.buffer = new Array(totalChunksInSegment); // Initialize buffer if not done yet
-             }
-
-              if (chunkIndex >= 0 && chunkIndex < segment.total && !segment.buffer[chunkIndex]) {
-                  segment.buffer[chunkIndex] = decryptedChunk; // Store ArrayBuffer
-                  segment.received++;
-                  receivedSize += decryptedChunk.byteLength; // Update total received size
-
-                 // Update progress
-                 if (fileMetadata.size > 0) {
-                     const percent = Math.min(100, Math.floor((receivedSize / fileMetadata.size) * 100));
-                     progressBar.style.width = percent + '%';
-                     progressPercent.textContent = percent + '%';
-                     fileInfo.textContent = `${fileMetadata.name} (${formatFileSize(receivedSize)} / ${formatFileSize(fileMetadata.size)})`;
-                 }
-
-                 // Check if segment is complete
-                 if (!segment.isComplete && segment.received === segment.total) {
-                     segment.isComplete = true;
-                     segmentsReceived++;
-                     console.log(`Segment ${segmentIndex} received completely (${segment.received}/${segment.total} chunks). Total segments received: ${segmentsReceived}/${totalSegments}`);
-
-                     // Check if all segments are complete
-                     if (segmentsReceived === totalSegments) {
-                         handleReceiveComplete();
-                     }
-                 }
-             } else {
-                  console.warn(`Duplicate or invalid chunk index received: Segment ${segmentIndex}, Chunk ${chunkIndex}. Already received: ${!!segment.buffer[chunkIndex]}`);
-             }
-
-        } catch (error) {
-            console.error("Error processing received chunk:", error);
-            showToast(getTranslation('receiveError'), true);
-            abortTransfer(); // Abort on chunk processing error
+        } else {
+            console.warn("Received unsupported data type:", typeof event.data);
         }
     }
 
@@ -1631,22 +2056,34 @@ document.addEventListener('DOMContentLoaded', function() {
             downloadLink.href = downloadUrl;
             downloadLink.download = fileMetadata.name;
 
-             // Update UI to show download button/link
-             downloadMessage.innerHTML = ''; // Clear receiving message
-             const downloadButton = document.createElement('button');
-             downloadButton.textContent = getTranslation('downloadButtonText', { filename: fileMetadata.name });
-             downloadButton.className = 'btn btn-success w-full py-3 px-4 mt-2'; // Style as needed
-             downloadButton.onclick = () => {
-                 downloadLink.click();
-                 // Clean up URL object after click
-                 setTimeout(() => URL.revokeObjectURL(downloadUrl), 100);
-                  // Optionally reset UI after download starts
-                 // resetUI();
-             };
-             downloadMessage.appendChild(downloadButton);
+            // Otomatik olarak indirme işlemini başlat
+            console.log('Triggering automatic download...');
+            document.body.appendChild(downloadLink); // Firefox için gerekli
+            downloadLink.click(); // Otomatik indirme başlat
+            
+            // Temizlik yap
+            setTimeout(() => {
+                document.body.removeChild(downloadLink);
+                URL.revokeObjectURL(downloadUrl);
+            }, 1000);
 
-             // Show success popup
-             showSuccessPopup(getTranslation('transferSuccessMessage', { filename: fileMetadata.name }));
+            // UI'ı güncelle
+            downloadMessage.textContent = getTranslation('downloadStarted') || 'Download started automatically';
+            
+            // Başarı bildirimi göster
+            showSuccessPopup(getTranslation('transferSuccessMessage', { filename: fileMetadata.name }));
+            
+            // Göndericiyi başarılı indirme hakkında bilgilendir
+            try {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    console.log("Notifying sender about successful download...");
+                    socket.send(JSON.stringify({ type: 'download-complete' }));
+                } else {
+                    console.warn("WebSocket not available to notify sender");
+                }
+            } catch (notifyError) {
+                console.warn("Error notifying sender about download:", notifyError);
+            }
 
         } catch (error) {
             console.error('Error assembling or downloading file:', error);
@@ -1672,14 +2109,13 @@ document.addEventListener('DOMContentLoaded', function() {
         closePeerConnection(); // Use helper to close peer connection
 
         // Reset state variables
-        selectedFile = null;
+        // selectedFile = null; // <-- REMOVED: Don't reset the selected file here
         fileReader = null;
         receivedSize = 0;
-        receivedData = [];
+        // receivedData = []; // Keep received data until assembly or resetUI
         sendingProgress = 0;
-        receivingInProgress = false;
-        fileMetadata = { name: '', size: 0, type: '' };
-        sharedKey = null; // Reset shared key
+        // receivingInProgress = false; // Let metadata message control this
+        // fileMetadata = { name: '', size: 0, type: '' }; // Reset only when truly starting over
         keyPair = null; // Reset own key pair
 
         // --- Start: Reset multi-channel variables ---
@@ -1693,4 +2129,7 @@ document.addEventListener('DOMContentLoaded', function() {
          transferCompleteFlag = false; // Reset completion flag
         // --- End: Reset multi-channel variables ---
     }
+
+    // Ana değişkenleri genişletelim
+    // errorCounts zaten yukarıda tanımlandı
 });
