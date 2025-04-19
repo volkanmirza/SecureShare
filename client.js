@@ -182,14 +182,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function encryptData(key, data) {
         try {
-            const iv = crypto.getRandomValues(new Uint8Array(12)); // AES-GCM recommended IV size
-            const encodedData = new TextEncoder().encode(JSON.stringify(data)); // Ensure data is ArrayBuffer
+        const iv = crypto.getRandomValues(new Uint8Array(12)); // AES-GCM recommended IV size
+        const encodedData = new TextEncoder().encode(JSON.stringify(data)); // Ensure data is ArrayBuffer
             
-            const ciphertext = await crypto.subtle.encrypt(
-                { name: "AES-GCM", iv: iv },
-                key,
-                encodedData
-            );
+        const ciphertext = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            encodedData
+        );
             
             // ArrayBuffer'ları Base64 formatına çevir (JSON-safe)
             return { 
@@ -236,8 +236,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Şifresi çözülen verileri string'e ve sonra JSON'a çevir
             try {
-                const decodedText = new TextDecoder().decode(decryptedData);
-                return JSON.parse(decodedText);
+            const decodedText = new TextDecoder().decode(decryptedData);
+            return JSON.parse(decodedText);
             } catch (parseError) {
                 console.error("Error parsing decrypted data:", parseError);
                 throw new Error("Decrypted data could not be parsed as JSON");
@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    async function decryptChunk(key, iv, ciphertext) {
+     async function decryptChunk(key, iv, ciphertext) {
         try {
             // Gelen verileri Uint8Array'e çevir
             let ivArray, ciphertextArray;
@@ -357,15 +357,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     statusSender.textContent = getTranslation('waitingForReceiver');
                     // Generate keys *after* code is confirmed created
                     try {
-                        keyPair = await generateKeyPair();
-                        console.log("Sender keys generated.");
+                    keyPair = await generateKeyPair();
+                    console.log("Sender keys generated.");
                     } catch (keyGenError) {
                          console.error("Sender key generation failed:", keyGenError);
                          showToast(getTranslation('keyGenerationError'), true);
                          resetUI();
                          return; // Stop further processing
                     }
-                    
+
                     // --- Generate and Display QR Code ---
                     if (qrcodeContainer && qrcodeElement && qrcodePrompt && typeof QRCode !== 'undefined') {
                         try {
@@ -426,8 +426,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     downloadMessage.textContent = getTranslation('connectedToSenderInitiatingKeyExchange');
                     // Receiver generates keys and sends public key back as Base64
                     try {
-                        keyPair = await generateKeyPair();
-                        console.log("Receiver keys generated.");
+                    keyPair = await generateKeyPair();
+                    console.log("Receiver keys generated.");
                     } catch (keyGenError) {
                          console.error("Receiver key generation failed:", keyGenError);
                          showToast(getTranslation('keyGenerationError'), true);
@@ -792,7 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // JSON formatına dönüştür
             const plainMetadata = {
-                type: 'metadata',
+                 type: 'metadata',
                 name: selectedFile.name,
                 size: selectedFile.size, 
                 fileType: selectedFile.type || 'application/octet-stream'
@@ -835,7 +835,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-        } catch (error) {
+         } catch (error) {
             console.error('Error sending metadata:', error);
             showToast(getTranslation('metadataError'), true);
             abortTransfer();
@@ -860,9 +860,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!message.name || typeof message.size !== 'number') {
                         console.error("Invalid metadata format or missing fields");
                         showToast(getTranslation('metadataError'), true);
-                        return;
-                    }
-                    
+             return;
+         }
+
                     // Metadata'yı kaydet
                     fileMetadata = {
                         name: message.name,
@@ -909,7 +909,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Başarı mesajı
                     showToast(getTranslation('transferStarted'), false);
-                    return;
+                 return;
                 }
             } catch (error) {
                 console.error("Error processing text message:", error);
@@ -997,7 +997,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             handleReceiveComplete();
                         }
                     }
-                } else {
+                 } else {
                     console.warn(`Invalid chunk: Segment ${segmentIndex}, Chunk ${chunkIndex}, Already received: ${!!segment.buffer[chunkIndex]}`);
                 }
             } catch (error) {
@@ -1174,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (errorCounts[channelIndex] >= 3) {
                     showToast(getTranslation('chunkReadSendError'), true);
                     abortTransfer();
-                } else {
+         } else {
                     errorCounts[channelIndex]++;
                     console.warn(`Incremented error count for channel ${channelIndex} to ${errorCounts[channelIndex]}`);
                 }
@@ -1210,8 +1210,8 @@ document.addEventListener('DOMContentLoaded', function() {
          //    closeDataChannels();
          //    closePeerConnection();
          // }, 5000); // Example: close after 5 seconds
-     }
-
+    }
+    
     // Reset UI to initial state
     function resetUI() {
         console.log("Resetting UI and state.");
@@ -1432,7 +1432,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Ensure WebSocket is initialized (or re-initialize if needed)
         if (!socket || socket.readyState !== WebSocket.OPEN) {
              console.log("WebSocket not open, initializing...");
-             initWebSocket();
+        initWebSocket();
              // Need to wait for socket to open before proceeding
              await new Promise(resolve => {
                   const checkSocket = () => {
@@ -1466,10 +1466,10 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log("Generated code:", code);
         
         // Send code (WebSocket should be ready now)
-        socket.send(JSON.stringify({
-            type: 'create-code',
-            code: code
-        }));
+            socket.send(JSON.stringify({
+                type: 'create-code',
+                code: code
+            }));
         statusSender.textContent = getTranslation('generatingCode'); // Update status immediately
         statusSender.classList.remove('hidden');
     });
@@ -1493,13 +1493,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Ensure WebSocket is initialized (or re-initialize if needed)
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.log("Receiver: WebSocket not open, initializing...");
-            initWebSocket();
+        initWebSocket();
             // Need to wait for socket to open before proceeding
             await new Promise(resolve => {
                  const checkSocket = () => {
                       if (socket && socket.readyState === WebSocket.OPEN) {
                           resolve();
-                      } else {
+                } else {
                           setTimeout(checkSocket, 100);
                       }
                  };
@@ -1512,10 +1512,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Send join code (WebSocket should be ready now)
         console.log("Receiver: Sending join-code:", code);
-        socket.send(JSON.stringify({
-            type: 'join-code',
-            code: code
-        }));
+            socket.send(JSON.stringify({
+                type: 'join-code',
+                code: code
+            }));
         // Update status immediately
         downloadStatus.classList.remove('hidden');
         downloadIcon.textContent = '⏳'; 
@@ -1589,13 +1589,16 @@ document.addEventListener('DOMContentLoaded', function() {
     */
 
     // Create Peer Connection
-    async function createPeerConnection(isInitiator) { // <-- Make async
+    async function createPeerConnection(isInitiator) { // <-- Made async
         console.log(`Attempting to create PeerConnection. isInitiator: ${isInitiator}`); // ADDED
         resetRTCVariables(); // Reset variables before creating a new connection
 
         try {
-            console.log("Executing: new RTCPeerConnection(RTC_CONFIGURATION)"); // ADDED
-            peerConnection = new RTCPeerConnection(RTC_CONFIGURATION);
+            // Asenkron olarak RTC yapılandırmasını al
+            const configuration = await window.appConfig.getRTCConfiguration();
+            
+            console.log("Executing: new RTCPeerConnection with fetched config"); // ADDED
+            peerConnection = new RTCPeerConnection(configuration); // Yapılandırmayı kullan
             console.log("PeerConnection object created:", peerConnection); // ADDED
 
             if (!peerConnection) { // ADDED Check
@@ -1611,7 +1614,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             };
 
-            console.log("Attaching oniceconnectionstatechange listener..."); // ADDED
+            // PeerConnection durumu değişikliği izleme
             peerConnection.oniceconnectionstatechange = () => {
                 if (peerConnection) {
                     console.log(`---> ICE Connection State Changed: ${peerConnection.iceConnectionState}`); // MODIFIED Log
@@ -1663,7 +1666,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
             }
             // --- End: Multi-channel handling ---
-
 
         } catch (error) {
             console.error('Error creating Peer Connection:', error);

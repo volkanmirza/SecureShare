@@ -1,9 +1,35 @@
 // server.js
 const https = require('https');
+const http = require('http'); // http modülünü de ekleyelim
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const crypto = require('crypto'); // Crypto modülünü ekle
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+// *** TURN Sunucu Ayarları ***
+const TURN_SECRET = process.env.TURN_SECRET || "YourVerySecretTURNKey"; // Ortam değişkeninden alın veya güvenli bir şekilde ayarlayın
+const TURN_TTL = 3600; // 1 saat (saniye cinsinden)
+// --- End TURN Sunucu Ayarları ---
+
+// *** TURN Credentials Fonksiyonu ***
+function generateTurnCredentials(secret, ttlSeconds) {
+  const unixTimeStamp = Math.floor(Date.now() / 1000) + ttlSeconds;
+  const username = `${unixTimeStamp}`; // Kullanıcı adı sadece timestamp olacak
+  const hmac = crypto.createHmac("sha1", secret);
+  hmac.update(username);
+  const credential = hmac.digest("base64");
+
+  return {
+    username,
+    credential,
+    ttl: ttlSeconds,
+  };
+}
+// --- End TURN Credentials Fonksiyonu ---
 
 // --- SSL Certificate Configuration ---
 const certsPath = '/etc/ssl/foxfile.org'; // Directory for certificates
@@ -21,19 +47,35 @@ try {
     console.error(`Lütfen '${keyPath}' ve '${certPath}' dosyalarının mevcut ve okunabilir olduğundan emin olun.`);
     console.error("Uygulama HTTP modunda 3000 portunda başlatılacak.\n");
     // Fallback to HTTP if certs are not found/readable
-    options = null; 
+    options = null;
 }
 // --- End SSL Configuration ---
 
 // Create server (HTTPS if certs loaded, otherwise HTTP)
 const server = options 
     ? https.createServer(options, handleRequest) 
-    : require('http').createServer(handleRequest);
+    : http.createServer(handleRequest); // HTTP modülünü kullan
 
 // Request handler function (extracted for clarity)
 function handleRequest(req, res) {
     const parsedUrl = url.parse(req.url);
     let filePath = '.' + parsedUrl.pathname;
+    
+    // *** API Endpoint Handler ***
+    if (parsedUrl.pathname === '/api/turn-credentials') {
+        try {
+            const credentials = generateTurnCredentials(TURN_SECRET, TURN_TTL);
+            console.log("Generated TURN credentials requested:", credentials.username);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(credentials));
+        } catch (error) {
+            console.error("Error generating TURN credentials:", error);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: "Failed to generate TURN credentials" }));
+        }
+        return; // API isteği işlendi, dosya okumaya devam etme
+    }
+    // --- End API Endpoint Handler ---
     
     // Default to index.html for root requests
     if (filePath === './') {
@@ -79,7 +121,7 @@ function handleRequest(req, res) {
 }
 
 // Set the port (Use 443 for HTTPS if available, else 3000 for HTTP fallback)
-const PORT = options ? (process.env.PORT || 443) : (process.env.PORT || 3000);
+const PORT = options ? (process.env.PORT || 443) : (process.env.PORT || 3001);
 const protocol = options ? 'https' : 'http';
 
 server.listen(PORT, () => {
