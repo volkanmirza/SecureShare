@@ -374,7 +374,6 @@ async function getRTCConfiguration() {
                 }
             ]
         };
-        console.log("Using dynamic RTC Configuration:", configuration);
         return configuration;
 
     } catch (error) {
