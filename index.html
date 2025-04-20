@@ -91,6 +91,20 @@
                     </div>
                 </div>
                 
+                <!-- Terms Agreement Checkbox -->
+                <div class="mt-4 mb-4">
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="terms-checkbox" type="checkbox" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="terms-checkbox" class="text-gray-700 dark:text-gray-300" data-i18n="termsCheckboxLabel">Kullanıcı Sözleşmesi ve Gizlilik Politikası'nı okudum ve kabul ediyorum</label>
+                            <button id="terms-link" class="ml-1 text-blue-600 dark:text-blue-400 hover:underline" type="button" data-i18n="termsLink">Sözleşmeyi Oku</button>
+                            <p id="terms-error" class="hidden mt-1 text-sm text-red-600 dark:text-red-500" data-i18n="termsCheckboxRequired">Dosya paylaşmak için Kullanıcı Sözleşmesi'ni kabul etmelisiniz</p>
+                        </div>
+                    </div>
+                </div>
+                
                 <button id="share-btn" class="w-full btn btn-primary py-3 px-4 disabled:cursor-not-allowed" disabled>
                     <span data-i18n="shareButton">Dosya Paylaş</span>
                 </button>
@@ -297,6 +311,81 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Terms of Service Accordion -->
+            <div class="accordion-item mt-3">
+                <button class="accordion-header card p-4 w-full text-left font-semibold flex justify-between items-center">
+                    <span class="flex items-center">
+                        <i class="fas fa-file-contract text-blue-500 mr-2"></i>
+                        <span data-i18n="termsTitle">Kullanıcı Sözleşmesi ve Gizlilik Politikası</span>
+                    </span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="accordion-content card mt-1 p-6 hidden">
+                    <div class="space-y-6 text-sm">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3" data-i18n="termsOfService">Kullanıcı Sözleşmesi</h3>
+                            <p class="text-gray-500 mb-3" data-i18n="termsDate">Yürürlük Tarihi: 20 Nisan 2025</p>
+                            
+                            <h4 class="font-medium mb-2" data-i18n="termsPartiesTitle">1. Taraflar ve Kabul</h4>
+                            <p class="mb-4" data-i18n="termsPartiesText">Bu sözleşme, [Foxfile.org] ("Platform") ile Platform'u kullanan gerçek veya tüzel kişi ("Kullanıcı") arasında akdedilmiştir. Kullanıcı, Platform'a erişim sağlayarak veya hizmetleri kullanarak bu sözleşmenin tüm hükümlerini okuduğunu, anladığını ve kabul ettiğini beyan eder.</p>
+                            
+                            <h4 class="font-medium mb-2" data-i18n="termsServiceTitle">2. Hizmetin Tanımı</h4>
+                            <p class="mb-4" data-i18n="termsServiceText">Platform, kullanıcılar arasında şifreli ve anlık dosya paylaşımı sağlayan bir aracı hizmet sunmaktadır. Paylaşılan dosyalar Platform sunucularında depolanmaz; yalnızca kullanıcılar arasında doğrudan iletilir.</p>
+                            
+                            <h4 class="font-medium mb-2" data-i18n="termsConditionsTitle">3. Kullanım Koşulları</h4>
+                            <div class="ml-4 mb-4">
+                                <p class="mb-2" data-i18n="termsConditions1">3.1. Kullanıcı, Platform'u yalnızca yasalara uygun amaçlarla kullanmayı taahhüt eder.</p>
+                                <p class="mb-2" data-i18n="termsConditions2">3.2. Kullanıcı, Platform üzerinden paylaştığı tüm içeriklerin yasalara uygun olduğunu ve üçüncü tarafların haklarını ihlal etmediğini garanti eder.</p>
+                                <p class="mb-2" data-i18n="termsConditions3">3.3. Kullanıcı, Platform'u kullanırken aşağıdaki eylemlerden kaçınacaktır:</p>
+                                <ul class="list-disc ml-6 space-y-1">
+                                    <li data-i18n="termsConditionsItem1">Telif hakkı veya diğer fikri mülkiyet haklarını ihlal eden içeriklerin paylaşılması</li>
+                                    <li data-i18n="termsConditionsItem2">Müstehcen, saldırgan, yanıltıcı veya yasa dışı içeriklerin paylaşılması</li>
+                                    <li data-i18n="termsConditionsItem3">Kötü amaçlı yazılım, virüs veya benzeri zararlı içeriklerin paylaşılması</li>
+                                </ul>
+                            </div>
+                            
+                            <h4 class="font-medium mb-2" data-i18n="termsDisclaimerTitle">4. Sorumluluk Reddi</h4>
+                            <div class="ml-4 mb-4">
+                                <p class="mb-2" data-i18n="termsDisclaimer1">4.1. Platform, kullanıcılar tarafından paylaşılan içeriklerin doğruluğu, güvenliği veya yasallığı konusunda herhangi bir sorumluluk kabul etmez.</p>
+                                <p class="mb-2" data-i18n="termsDisclaimer2">4.2. Kullanıcı, Platform'u kullanarak gerçekleştirdiği tüm işlemlerden ve paylaşımlardan münhasıran sorumludur.</p>
+                                <p class="mb-2" data-i18n="termsDisclaimer3">4.3. Platform, hizmetin kesintisiz veya hatasız olacağını garanti etmez ve hizmetin kullanımından doğabilecek doğrudan veya dolaylı zararlardan sorumlu tutulamaz.</p>
+                            </div>
+                            
+                            <h4 class="font-medium mb-2" data-i18n="termsIntellectualTitle">5. Fikri Mülkiyet Hakları</h4>
+                            <p class="mb-4" data-i18n="termsIntellectualText">Platform'da yer alan tüm içerikler, tasarımlar, yazılımlar ve diğer materyaller Platform'a aittir ve telif hakkı yasalarıyla korunmaktadır. Kullanıcı, Platform'un yazılımını, tasarımını veya içeriğini izinsiz olarak kopyalayamaz, dağıtamaz veya değiştiremez.</p>
+                            
+                            <h4 class="font-medium mb-2" data-i18n="termsModificationTitle">6. Sözleşmenin Değiştirilmesi</h4>
+                            <p class="mb-4" data-i18n="termsModificationText">Platform, bu sözleşme hükümlerini dilediği zaman tek taraflı olarak değiştirme hakkını saklı tutar. Güncellenen sözleşme, Platform'da yayınlandığı tarihte yürürlüğe girer ve Kullanıcı, Platform'u kullanmaya devam ederek güncellenen sözleşmeyi kabul etmiş sayılır.</p>
+                            
+                            <h4 class="font-medium mb-2" data-i18n="termsJurisdictionTitle">7. Uygulanacak Hukuk ve Yetki</h4>
+                            <p class="mb-4" data-i18n="termsJurisdictionText">Bu sözleşme, Türkiye Cumhuriyeti yasalarına tabidir. Taraflar, bu sözleşmeden doğabilecek her türlü uyuşmazlığın çözümünde İstanbul (Çağlayan) Mahkemeleri ve İcra Daireleri'nin yetkili olduğunu kabul eder.</p>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3">🔒 <span data-i18n="privacyTitle">Gizlilik Politikası</span></h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-medium mb-2" data-i18n="privacyCollectionTitle">1. Toplanan Veriler</h4>
+                                    <p data-i18n="privacyCollectionText">Platform, kullanıcıların kimliklerini belirlemeye yönelik kişisel verileri toplamaz. Ancak, hizmetin sağlanabilmesi için IP adresleri ve bağlantı zamanları gibi teknik veriler geçici olarak kaydedilebilir.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2" data-i18n="privacyUseTitle">2. Verilerin Kullanımı</h4>
+                                    <p data-i18n="privacyUseText">Toplanan teknik veriler, yalnızca hizmetin güvenliğini sağlamak ve yasal yükümlülükleri yerine getirmek amacıyla kullanılır. Bu veriler, üçüncü taraflarla paylaşılmaz, satılmaz veya ticari amaçlarla kullanılmaz.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2" data-i18n="privacyStorageTitle">3. Verilerin Saklanması</h4>
+                                    <p data-i18n="privacyStorageText">Toplanan teknik veriler, yasal zorunluluklar dışında belirli bir süre saklanmaz ve düzenli olarak silinir.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium mb-2" data-i18n="privacyThirdPartyTitle">4. Üçüncü Taraf Bağlantıları</h4>
+                                    <p data-i18n="privacyThirdPartyText">Platform, üçüncü taraf web sitelerine bağlantılar içerebilir. Bu sitelerin gizlilik uygulamalarından Platform sorumlu değildir. Kullanıcılar, bu sitelerin gizlilik politikalarını incelemelidir.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -336,12 +425,6 @@
             </div>
         </div>
     </div>
-
-    <script>
-        // and might have caused issues.
-        
-    });
-    </script>
 
     <!-- Accordion Functionality -->
     <script>

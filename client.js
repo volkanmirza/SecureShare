@@ -73,6 +73,69 @@ document.addEventListener('DOMContentLoaded', function() {
     const successPopupMessage = document.getElementById('success-popup-message');
     const successPopupOkBtn = document.getElementById('success-popup-ok-btn');
     
+    // Terms checkbox and link functionality (Re-adding declarations)
+    const termsCheckbox = document.getElementById('terms-checkbox');
+    const termsLink = document.getElementById('terms-link');
+    const termsError = document.getElementById('terms-error');
+    
+    // Function to check if sharing should be enabled
+    function updateShareButtonState() {
+        const shareBtn = document.getElementById('share-btn');
+        
+        // Check if a file is selected and terms are accepted
+        if (fileInput.files.length > 0 && termsCheckbox.checked) {
+            shareBtn.disabled = false;
+            termsError.classList.add('hidden');
+        } else if (fileInput.files.length > 0 && !termsCheckbox.checked) {
+            // Show error only if file is selected but terms not accepted
+            shareBtn.disabled = true;
+            termsError.classList.remove('hidden');
+        } else {
+            // No file selected
+            shareBtn.disabled = true;
+            termsError.classList.add('hidden');
+        }
+    }
+    
+    // Check terms agreement when checkbox changes
+    if (termsCheckbox) {
+        termsCheckbox.addEventListener('change', updateShareButtonState);
+    }
+    
+    // Open terms accordion when link is clicked
+    if (termsLink) {
+        termsLink.addEventListener('click', function() {
+            // Find the Terms of Service accordion item
+            const termsAccordion = document.querySelector('.accordion-item:nth-child(2)');
+            if (termsAccordion) {
+                const accordionHeader = termsAccordion.querySelector('.accordion-header');
+                // Check if it's already open
+                const content = accordionHeader.nextElementSibling;
+                if (content.classList.contains('hidden')) {
+                    // Trigger a click on the header to open it
+                    accordionHeader.click();
+                }
+                
+                // Scroll to the terms
+                termsAccordion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    }
+    
+    // Update file input handler to also check terms checkbox
+    if (fileInput) {
+        const originalFileInputHandler = fileInput.onchange;
+        fileInput.onchange = function(e) {
+            // Call the original handler if it exists
+            if (typeof originalFileInputHandler === 'function') {
+                originalFileInputHandler.call(this, e);
+            }
+            
+            // Update button state
+            updateShareButtonState();
+        };
+    }
+    
     // WebSocket connection
     let socket = null;
     let sharedKey = null; // <-- Add variable for shared secret key
@@ -1362,6 +1425,9 @@ document.addEventListener('DOMContentLoaded', function() {
          sharedKey = null;
          keyPair = null;
 
+        // Reset terms checkbox
+        if (termsCheckbox) termsCheckbox.checked = false;
+
         // Re-initialize WebSocket if necessary, or ensure it's ready
         // initWebSocket(); // Be careful not to create rapid reconnect loops
         console.log("UI and state reset complete.");
@@ -1503,9 +1569,9 @@ document.addEventListener('DOMContentLoaded', function() {
         fileName.classList.remove('hidden');
         fileSize.classList.remove('hidden');
         
-        console.log("Enabling share button..."); // Log before enabling button
-        shareBtn.disabled = false;
-        console.log("shareBtn disabled state after update:", shareBtn.disabled); // Log button state
+        // console.log("Enabling share button..."); // Log before enabling button - REMOVED
+        // shareBtn.disabled = false; // <-- REMOVED THIS LINE
+        // console.log("shareBtn disabled state after update:", shareBtn.disabled); // Log button state - REMOVED
     }
     
     // Share button click
@@ -2220,4 +2286,67 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Ana değişkenleri genişletelim
     // errorCounts zaten yukarıda tanımlandı
+    
+    // Terms checkbox and link functionality
+    // const termsCheckbox = document.getElementById('terms-checkbox');
+    // const termsLink = document.getElementById('terms-link');
+    // const termsError = document.getElementById('terms-error');
+    
+    // Function to check if sharing should be enabled
+    function updateShareButtonState() {
+        const shareBtn = document.getElementById('share-btn');
+        
+        // Check if a file is selected and terms are accepted
+        if (fileInput.files.length > 0 && termsCheckbox.checked) {
+            shareBtn.disabled = false;
+            termsError.classList.add('hidden');
+        } else if (fileInput.files.length > 0 && !termsCheckbox.checked) {
+            // Show error only if file is selected but terms not accepted
+            shareBtn.disabled = true;
+            termsError.classList.remove('hidden');
+        } else {
+            // No file selected
+            shareBtn.disabled = true;
+            termsError.classList.add('hidden');
+        }
+    }
+    
+    // Check terms agreement when checkbox changes
+    if (termsCheckbox) {
+        termsCheckbox.addEventListener('change', updateShareButtonState);
+    }
+    
+    // Open terms accordion when link is clicked
+    if (termsLink) {
+        termsLink.addEventListener('click', function() {
+            // Find the Terms of Service accordion item
+            const termsAccordion = document.querySelector('.accordion-item:nth-child(2)');
+            if (termsAccordion) {
+                const accordionHeader = termsAccordion.querySelector('.accordion-header');
+                // Check if it's already open
+                const content = accordionHeader.nextElementSibling;
+                if (content.classList.contains('hidden')) {
+                    // Trigger a click on the header to open it
+                    accordionHeader.click();
+                }
+                
+                // Scroll to the terms
+                termsAccordion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    }
+    
+    // Update file input handler to also check terms checkbox
+    if (fileInput) {
+        const originalFileInputHandler = fileInput.onchange;
+        fileInput.onchange = function(e) {
+            // Call the original handler if it exists
+            if (typeof originalFileInputHandler === 'function') {
+                originalFileInputHandler.call(this, e);
+            }
+            
+            // Update button state
+            updateShareButtonState();
+        };
+    }
 });

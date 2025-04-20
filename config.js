@@ -131,7 +131,48 @@ const translations = {
         "analyticsTitle": "Analytics:",
         "analyticsText": "We use GoatCounter, which is a privacy-focused analytics tool:",
         "analyticsNoCookies": "No cookies are used",
-        "analyticsAnonymous": "IPs are anonymized while still providing country-based location information"
+        "analyticsAnonymous": "IPs are anonymized while still providing country-based location information",
+        
+        // Terms and Privacy
+        "termsTitle": "Terms of Service and Privacy Policy",
+        "termsOfService": "Terms of Service",
+        "termsDate": "Effective Date: April 20, 2025",
+        "termsPartiesTitle": "1. Parties and Acceptance",
+        "termsPartiesText": "This agreement is between [Foxfile.org] ('Platform') and the natural or legal person ('User') using the Platform. By accessing the Platform or using its services, the User declares that they have read, understood, and accepted all provisions of this agreement.",
+        "termsServiceTitle": "2. Service Description",
+        "termsServiceText": "The Platform provides an intermediary service for encrypted and instant file sharing between users. Shared files are not stored on Platform servers; they are only transmitted directly between users.",
+        "termsConditionsTitle": "3. Terms of Use",
+        "termsConditions1": "3.1. The User undertakes to use the Platform only for purposes that comply with the law.",
+        "termsConditions2": "3.2. The User guarantees that all content shared through the Platform complies with the law and does not infringe the rights of third parties.",
+        "termsConditions3": "3.3. The User will refrain from the following actions when using the Platform:",
+        "termsConditionsItem1": "Sharing content that infringes copyright or other intellectual property rights",
+        "termsConditionsItem2": "Sharing obscene, offensive, misleading, or illegal content",
+        "termsConditionsItem3": "Sharing malware, viruses, or similar harmful content",
+        "termsDisclaimerTitle": "4. Disclaimer",
+        "termsDisclaimer1": "4.1. The Platform does not accept any responsibility for the accuracy, security, or legality of content shared by users.",
+        "termsDisclaimer2": "4.2. The User is exclusively responsible for all transactions and shares made using the Platform.",
+        "termsDisclaimer3": "4.3. The Platform does not guarantee that the service will be uninterrupted or error-free and cannot be held responsible for direct or indirect damages arising from the use of the service.",
+        "termsIntellectualTitle": "5. Intellectual Property Rights",
+        "termsIntellectualText": "All content, designs, software, and other materials on the Platform belong to the Platform and are protected by copyright laws. The User may not copy, distribute, or modify the Platform's software, design, or content without permission.",
+        "termsModificationTitle": "6. Modification of the Agreement",
+        "termsModificationText": "The Platform reserves the right to unilaterally change the provisions of this agreement at any time. The updated agreement takes effect on the date it is published on the Platform, and the User is deemed to have accepted the updated agreement by continuing to use the Platform.",
+        "termsJurisdictionTitle": "7. Applicable Law and Jurisdiction",
+        "termsJurisdictionText": "This agreement is subject to the laws of the Republic of Turkey. The parties accept that Istanbul (Çağlayan) Courts and Enforcement Offices have jurisdiction to resolve any disputes arising from this agreement.",
+        
+        "privacyTitle": "Privacy Policy",
+        "privacyCollectionTitle": "1. Collected Data",
+        "privacyCollectionText": "The Platform does not collect personal data to identify users. However, technical data such as IP addresses and connection times may be temporarily recorded for the provision of the service.",
+        "privacyUseTitle": "2. Use of Data",
+        "privacyUseText": "Collected technical data is used only to ensure the security of the service and to fulfill legal obligations. This data is not shared with third parties, sold, or used for commercial purposes.",
+        "privacyStorageTitle": "3. Data Storage",
+        "privacyStorageText": "Collected technical data is not stored for a specific period except for legal obligations and is regularly deleted.",
+        "privacyThirdPartyTitle": "4. Third-Party Links",
+        "privacyThirdPartyText": "The Platform may contain links to third-party websites. The Platform is not responsible for the privacy practices of these sites. Users should review the privacy policies of these sites.",
+        
+        // Terms Checkbox
+        "termsCheckboxLabel": "I have read and agree to the Terms of Service and Privacy Policy",
+        "termsLink": "Read Terms",
+        "termsCheckboxRequired": "You must accept the Terms of Service to share files"
     },
     tr: {
         // Header
@@ -262,7 +303,48 @@ const translations = {
         "analyticsTitle": "Analitik:",
         "analyticsText": "Gizliliğe odaklı bir analitik aracı olan GoatCounter kullanıyoruz:",
         "analyticsNoCookies": "Çerez kullanılmaz",
-        "analyticsAnonymous": "IP adresleri anonimleştirilerek ülke bazlı lokasyon bilgisi sağlanır"
+        "analyticsAnonymous": "IP adresleri anonimleştirilerek ülke bazlı lokasyon bilgisi sağlanır",
+        
+        // Terms and Privacy
+        "termsTitle": "Kullanıcı Sözleşmesi ve Gizlilik Politikası",
+        "termsOfService": "Kullanıcı Sözleşmesi",
+        "termsDate": "Yürürlük Tarihi: 20 Nisan 2025",
+        "termsPartiesTitle": "1. Taraflar ve Kabul",
+        "termsPartiesText": "Bu sözleşme, [Foxfile.org] ('Platform') ile Platform'u kullanan gerçek veya tüzel kişi ('Kullanıcı') arasında akdedilmiştir. Kullanıcı, Platform'a erişim sağlayarak veya hizmetleri kullanarak bu sözleşmenin tüm hükümlerini okuduğunu, anladığını ve kabul ettiğini beyan eder.",
+        "termsServiceTitle": "2. Hizmetin Tanımı",
+        "termsServiceText": "Platform, kullanıcılar arasında şifreli ve anlık dosya paylaşımı sağlayan bir aracı hizmet sunmaktadır. Paylaşılan dosyalar Platform sunucularında depolanmaz; yalnızca kullanıcılar arasında doğrudan iletilir.",
+        "termsConditionsTitle": "3. Kullanım Koşulları",
+        "termsConditions1": "3.1. Kullanıcı, Platform'u yalnızca yasalara uygun amaçlarla kullanmayı taahhüt eder.",
+        "termsConditions2": "3.2. Kullanıcı, Platform üzerinden paylaştığı tüm içeriklerin yasalara uygun olduğunu ve üçüncü tarafların haklarını ihlal etmediğini garanti eder.",
+        "termsConditions3": "3.3. Kullanıcı, Platform'u kullanırken aşağıdaki eylemlerden kaçınacaktır:",
+        "termsConditionsItem1": "Telif hakkı veya diğer fikri mülkiyet haklarını ihlal eden içeriklerin paylaşılması",
+        "termsConditionsItem2": "Müstehcen, saldırgan, yanıltıcı veya yasa dışı içeriklerin paylaşılması",
+        "termsConditionsItem3": "Kötü amaçlı yazılım, virüs veya benzeri zararlı içeriklerin paylaşılması",
+        "termsDisclaimerTitle": "4. Sorumluluk Reddi",
+        "termsDisclaimer1": "4.1. Platform, kullanıcılar tarafından paylaşılan içeriklerin doğruluğu, güvenliği veya yasallığı konusunda herhangi bir sorumluluk kabul etmez.",
+        "termsDisclaimer2": "4.2. Kullanıcı, Platform'u kullanarak gerçekleştirdiği tüm işlemlerden ve paylaşımlardan münhasıran sorumludur.",
+        "termsDisclaimer3": "4.3. Platform, hizmetin kesintisiz veya hatasız olacağını garanti etmez ve hizmetin kullanımından doğabilecek doğrudan veya dolaylı zararlardan sorumlu tutulamaz.",
+        "termsIntellectualTitle": "5. Fikri Mülkiyet Hakları",
+        "termsIntellectualText": "Platform'da yer alan tüm içerikler, tasarımlar, yazılımlar ve diğer materyaller Platform'a aittir ve telif hakkı yasalarıyla korunmaktadır. Kullanıcı, Platform'un yazılımını, tasarımını veya içeriğini izinsiz olarak kopyalayamaz, dağıtamaz veya değiştiremez.",
+        "termsModificationTitle": "6. Sözleşmenin Değiştirilmesi",
+        "termsModificationText": "Platform, bu sözleşme hükümlerini dilediği zaman tek taraflı olarak değiştirme hakkını saklı tutar. Güncellenen sözleşme, Platform'da yayınlandığı tarihte yürürlüğe girer ve Kullanıcı, Platform'u kullanmaya devam ederek güncellenen sözleşmeyi kabul etmiş sayılır.",
+        "termsJurisdictionTitle": "7. Uygulanacak Hukuk ve Yetki",
+        "termsJurisdictionText": "Bu sözleşme, Türkiye Cumhuriyeti yasalarına tabidir. Taraflar, bu sözleşmeden doğabilecek her türlü uyuşmazlığın çözümünde İstanbul (Çağlayan) Mahkemeleri ve İcra Daireleri'nin yetkili olduğunu kabul eder.",
+        
+        "privacyTitle": "Gizlilik Politikası",
+        "privacyCollectionTitle": "1. Toplanan Veriler",
+        "privacyCollectionText": "Platform, kullanıcıların kimliklerini belirlemeye yönelik kişisel verileri toplamaz. Ancak, hizmetin sağlanabilmesi için IP adresleri ve bağlantı zamanları gibi teknik veriler geçici olarak kaydedilebilir.",
+        "privacyUseTitle": "2. Verilerin Kullanımı",
+        "privacyUseText": "Toplanan teknik veriler, yalnızca hizmetin güvenliğini sağlamak ve yasal yükümlülükleri yerine getirmek amacıyla kullanılır. Bu veriler, üçüncü taraflarla paylaşılmaz, satılmaz veya ticari amaçlarla kullanılmaz.",
+        "privacyStorageTitle": "3. Verilerin Saklanması",
+        "privacyStorageText": "Toplanan teknik veriler, yasal zorunluluklar dışında belirli bir süre saklanmaz ve düzenli olarak silinir.",
+        "privacyThirdPartyTitle": "4. Üçüncü Taraf Bağlantıları",
+        "privacyThirdPartyText": "Platform, üçüncü taraf web sitelerine bağlantılar içerebilir. Bu sitelerin gizlilik uygulamalarından Platform sorumlu değildir. Kullanıcılar, bu sitelerin gizlilik politikalarını incelemelidir.",
+        
+        // Terms Checkbox
+        "termsCheckboxLabel": "Kullanıcı Sözleşmesi ve Gizlilik Politikası'nı okudum ve kabul ediyorum",
+        "termsLink": "Sözleşmeyi Oku",
+        "termsCheckboxRequired": "Dosya paylaşmak için Kullanıcı Sözleşmesi'ni kabul etmelisiniz"
     }
 };
 
