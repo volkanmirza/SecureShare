@@ -55,8 +55,7 @@
     <div class="container mx-auto px-4 py-8">
         <header class="mb-10 text-center">
             <h1 class="text-4xl font-bold mb-2 flex items-center justify-center">
-                <i class="fas fa-user-shield mr-3"></i>
-                <span data-i18n="appTitle">SecureShare</span>
+                <img src="logo.png" alt="foxfile.org" class="h-20 mx-auto" />
             </h1>
             <p class="text-lg" data-i18n="appDescription">Uçtan uca şifreli eşler arası dosya paylaşımı</p>
         </header>
@@ -238,6 +237,69 @@
         </section>
     </div>
 
+    <!-- Connection Details Accordion Section -->
+    <section class="mt-12 container mx-auto px-4">
+        <div class="accordion">
+            <div class="accordion-item">
+                <button class="accordion-header card p-4 w-full text-left font-semibold flex justify-between items-center">
+                    <span class="flex items-center">
+                        <i class="fas fa-info-circle text-blue-500 mr-2"></i>
+                        <span data-i18n="connectionSystemTitle">Sistem Bağlantıları Nasıl Kurulur</span>
+                    </span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="accordion-content card mt-1 p-6 hidden">
+                    <!-- Turkish Content -->
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold mb-3" data-i18n="connectionSystemHowTitle">Sistem Bağlantıları Nasıl Çalışır?</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="font-medium mb-1" data-i18n="sameNetworkTitle">Aynı Yerel Ağda (LAN):</h4>
+                                <p data-i18n="sameNetworkText">İki bilgisayar aynı yerel ağda (örneğin, aynı Wi-Fi) ise, STUN sunucuları IP adreslerinin keşfedilmesine yardımcı olur ve doğrudan bağlantı genellikle kolayca kurulabilir. Bu süreç şöyle işler:</p>
+                                <ol class="list-decimal ml-6 mt-2 space-y-1">
+                                    <li data-i18n="sameNetworkStep1">Hem gönderici hem de alıcı, sunucumuza WebSocket üzerinden bağlanır.</li>
+                                    <li data-i18n="sameNetworkStep2">Paylaşım kodu, eşleştirme için kullanılır.</li>
+                                    <li data-i18n="sameNetworkStep3">STUN sunucularımız, her iki tarafın da yerel IP adreslerini keşfeder.</li>
+                                    <li data-i18n="sameNetworkStep4">WebRTC bağlantısı kurulur ve dosya doğrudan eşler arasında aktarılır.</li>
+                                </ol>
+                            </div>
+                            <div>
+                                <h4 class="font-medium mb-1" data-i18n="differentNetworkTitle">Farklı Ağlarda:</h4>
+                                <p data-i18n="differentNetworkText">Bilgisayarlar farklı ağlarda ise (örneğin, farklı konumlarda, NAT arkasında veya güvenlik duvarları ile), bağlantı süreci daha karmaşıktır:</p>
+                                <ol class="list-decimal ml-6 mt-2 space-y-1">
+                                    <li data-i18n="differentNetworkStep1">Sunucumuza WebSocket bağlantısı ve paylaşım kodu ile eşleştirme aynı şekilde çalışır.</li>
+                                    <li data-i18n="differentNetworkStep2">STUN sunucuları önce doğrudan bağlantı kurmayı dener, ancak çoğu NAT cihazı ve güvenlik duvarı bunu engelleyebilir.</li>
+                                    <li data-i18n="differentNetworkStep3">Doğrudan bağlantı kurulamazsa, TURN sunucularımız devreye girer.</li>
+                                    <li data-i18n="differentNetworkStep4">TURN sunucuları, NAT ve güvenlik duvarlarını aşmak için bir rölesi olarak çalışır - iki taraf arasındaki iletişim bu sunucular üzerinden aktarılır.</li>
+                                    <li data-i18n="differentNetworkStep5">Dosya transferi, TURN sunucularımız aracılığıyla gizli ve şifreli bir şekilde gerçekleşir.</li>
+                                </ol>
+                            </div>
+                            <div>
+                                <h4 class="font-medium mb-1" data-i18n="technicalDetailsTitle">Teknik Detaylar:</h4>
+                                <p data-i18n="technicalDetailsText">FoxFile, şu teknolojileri kullanarak güvenli bağlantıları sağlar:</p>
+                                <ul class="list-disc ml-6 mt-2 space-y-1">
+                                    <li data-i18n="technicalDetailWebRTC">WebRTC: Tarayıcı tabanlı gerçek zamanlı iletişim için</li>
+                                    <li data-i18n="technicalDetailSTUN">STUN Sunucuları: NAT arkasındaki cihazların gerçek adreslerini keşfetmek için</li>
+                                    <li data-i18n="technicalDetailTURN">TURN Sunucuları: Doğrudan bağlantı kurulamadığında trafiği yeniden yönlendirmek için</li>
+                                    <li data-i18n="technicalDetailDTLS">DTLS: Veri kanalı için aktarım katmanı güvenliği</li>
+                                    <li data-i18n="technicalDetailAES">AES-GCM: Dosya içeriğinin uçtan uca şifrelenmesi</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 class="font-medium mb-1" data-i18n="analyticsTitle">Analitik:</h4>
+                                <p data-i18n="analyticsText">Gizliliğe odaklı bir analitik aracı olan GoatCounter kullanıyoruz:</p>
+                                <ul class="list-disc ml-6 mt-2 space-y-1">
+                                    <li data-i18n="analyticsNoCookies">Çerez kullanılmaz</li>
+                                    <li data-i18n="analyticsAnonymous">IP adresleri anonimleştirilerek ülke bazlı lokasyon bilgisi sağlanır</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <footer class="mt-12 py-4 text-center text-sm">
         <p data-i18n="footerText">SecureShare © 2025 | Güvenli uçtan uca şifreli dosya paylaşımı</p>
     </footer>
@@ -279,6 +341,31 @@
         // and might have caused issues.
         
     });
+    </script>
+
+    <!-- Accordion Functionality -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+            
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', function() {
+                    const content = this.nextElementSibling;
+                    const icon = this.querySelector('.fa-chevron-down');
+                    
+                    // Toggle active class on content
+                    content.classList.toggle('hidden');
+                    content.classList.toggle('active');
+                    
+                    // Rotate chevron icon
+                    if (content.classList.contains('active')) {
+                        icon.style.transform = 'rotate(180deg)';
+                    } else {
+                        icon.style.transform = 'rotate(0)';
+                    }
+                });
+            });
+        });
     </script>
 
     <!-- GoatCounter Analytics -->

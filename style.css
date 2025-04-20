@@ -385,3 +385,27 @@ footer {
         margin: 0.5rem 0;
     }
 }
+
+/* Accordion Styles */
+.accordion-item {
+    margin-bottom: 1rem;
+}
+
+.accordion-header {
+    cursor: pointer;
+    transition: all var(--transitionSpeed) ease;
+}
+
+.accordion-header:hover {
+    background-color: var(--infoBackgroundColor);
+}
+
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+}
+
+.accordion-content.active {
+    max-height: 2000px;
+}

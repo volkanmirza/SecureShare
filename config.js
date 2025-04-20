@@ -103,7 +103,35 @@ const translations = {
         "donateButton": "Support Us",
         "donateTooltipTitle": "If You Love This Project, You Can Support It!",
         "donateTooltipLine1": "FoxFile is developed by an independent developer and is completely free.",
-        "donateTooltipLine2": "We need your support to cover server costs and keep the project sustainable."
+        "donateTooltipLine2": "We need your support to cover server costs and keep the project sustainable.",
+        
+        // Connection System Accordion
+        "connectionSystemTitle": "How Connections are Established",
+        "connectionSystemHowTitle": "How Connection System Works?",
+        "sameNetworkTitle": "On the Same Local Network (LAN):",
+        "sameNetworkText": "When two computers are on the same local network (e.g., same Wi-Fi), STUN servers help discover their IP addresses, and a direct connection can typically be established easily. This process works as follows:",
+        "sameNetworkStep1": "Both sender and receiver connect to our server via WebSocket.",
+        "sameNetworkStep2": "The share code is used for matching.",
+        "sameNetworkStep3": "Our STUN servers discover the local IP addresses of both parties.",
+        "sameNetworkStep4": "WebRTC connection is established, and the file is transferred directly between peers.",
+        "differentNetworkTitle": "On Different Networks:",
+        "differentNetworkText": "When computers are on different networks (e.g., different locations, behind NAT or firewalls), the connection process is more complex:",
+        "differentNetworkStep1": "WebSocket connection to our server and matching via share code works the same way.",
+        "differentNetworkStep2": "STUN servers first try to establish a direct connection, but most NAT devices and firewalls may block this.",
+        "differentNetworkStep3": "If direct connection cannot be established, our TURN servers come into play.",
+        "differentNetworkStep4": "TURN servers act as a relay to bypass NAT and firewalls - communication between the two parties is relayed through these servers.",
+        "differentNetworkStep5": "File transfer occurs securely and encrypted via our TURN servers.",
+        "technicalDetailsTitle": "Technical Details:",
+        "technicalDetailsText": "FoxFile ensures secure connections using these technologies:",
+        "technicalDetailWebRTC": "WebRTC: For browser-based real-time communication",
+        "technicalDetailSTUN": "STUN Servers: To discover the actual addresses of devices behind NAT",
+        "technicalDetailTURN": "TURN Servers: To relay traffic when direct connection cannot be established",
+        "technicalDetailDTLS": "DTLS: Transport layer security for data channel",
+        "technicalDetailAES": "AES-GCM: End-to-end encryption for file contents",
+        "analyticsTitle": "Analytics:",
+        "analyticsText": "We use GoatCounter, which is a privacy-focused analytics tool:",
+        "analyticsNoCookies": "No cookies are used",
+        "analyticsAnonymous": "IPs are anonymized while still providing country-based location information"
     },
     tr: {
         // Header
@@ -206,7 +234,35 @@ const translations = {
         "donateButton": "Destek Ol",
         "donateTooltipTitle": "Bu Projeyi Sevdiysen Destek Olabilirsin!",
         "donateTooltipLine1": "FoxFile, bağımsız bir geliştirici tarafından geliştirilmiştir ve tamamen ücretsizdir.",
-        "donateTooltipLine2": "Sunucu maliyetlerini karşılamak ve projeyi sürdürülebilir kılmak için desteğinize ihtiyacımız var."
+        "donateTooltipLine2": "Sunucu maliyetlerini karşılamak ve projeyi sürdürülebilir kılmak için desteğinize ihtiyacımız var.",
+        
+        // Connection System Accordion
+        "connectionSystemTitle": "Sistem Bağlantıları Nasıl Kurulur",
+        "connectionSystemHowTitle": "Sistem Bağlantıları Nasıl Çalışır?",
+        "sameNetworkTitle": "Aynı Yerel Ağda (LAN):",
+        "sameNetworkText": "İki bilgisayar aynı yerel ağda (örneğin, aynı Wi-Fi) ise, STUN sunucuları IP adreslerinin keşfedilmesine yardımcı olur ve doğrudan bağlantı genellikle kolayca kurulabilir. Bu süreç şöyle işler:",
+        "sameNetworkStep1": "Hem gönderici hem de alıcı, sunucumuza WebSocket üzerinden bağlanır.",
+        "sameNetworkStep2": "Paylaşım kodu, eşleştirme için kullanılır.",
+        "sameNetworkStep3": "STUN sunucularımız, her iki tarafın da yerel IP adreslerini keşfeder.",
+        "sameNetworkStep4": "WebRTC bağlantısı kurulur ve dosya doğrudan eşler arasında aktarılır.",
+        "differentNetworkTitle": "Farklı Ağlarda:",
+        "differentNetworkText": "Bilgisayarlar farklı ağlarda ise (örneğin, farklı konumlarda, NAT arkasında veya güvenlik duvarları ile), bağlantı süreci daha karmaşıktır:",
+        "differentNetworkStep1": "Sunucumuza WebSocket bağlantısı ve paylaşım kodu ile eşleştirme aynı şekilde çalışır.",
+        "differentNetworkStep2": "STUN sunucuları önce doğrudan bağlantı kurmayı dener, ancak çoğu NAT cihazı ve güvenlik duvarı bunu engelleyebilir.",
+        "differentNetworkStep3": "Doğrudan bağlantı kurulamazsa, TURN sunucularımız devreye girer.",
+        "differentNetworkStep4": "TURN sunucuları, NAT ve güvenlik duvarlarını aşmak için bir rölesi olarak çalışır - iki taraf arasındaki iletişim bu sunucular üzerinden aktarılır.",
+        "differentNetworkStep5": "Dosya transferi, TURN sunucularımız aracılığıyla gizli ve şifreli bir şekilde gerçekleşir.",
+        "technicalDetailsTitle": "Teknik Detaylar:",
+        "technicalDetailsText": "FoxFile, şu teknolojileri kullanarak güvenli bağlantıları sağlar:",
+        "technicalDetailWebRTC": "WebRTC: Tarayıcı tabanlı gerçek zamanlı iletişim için",
+        "technicalDetailSTUN": "STUN Sunucuları: NAT arkasındaki cihazların gerçek adreslerini keşfetmek için",
+        "technicalDetailTURN": "TURN Sunucuları: Doğrudan bağlantı kurulamadığında trafiği yeniden yönlendirmek için",
+        "technicalDetailDTLS": "DTLS: Veri kanalı için aktarım katmanı güvenliği",
+        "technicalDetailAES": "AES-GCM: Dosya içeriğinin uçtan uca şifrelenmesi",
+        "analyticsTitle": "Analitik:",
+        "analyticsText": "Gizliliğe odaklı bir analitik aracı olan GoatCounter kullanıyoruz:",
+        "analyticsNoCookies": "Çerez kullanılmaz",
+        "analyticsAnonymous": "IP adresleri anonimleştirilerek ülke bazlı lokasyon bilgisi sağlanır"
     }
 };
 
