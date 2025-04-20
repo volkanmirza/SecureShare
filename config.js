@@ -486,6 +486,7 @@ function initializeSettings() {
 
 // --- Start: Added RTC Configuration Function ---
 async function getRTCConfiguration() {
+    /* // Commenting out dynamic TURN credential fetching
     console.log("Fetching TURN credentials from server...");
     try {
         const response = await fetch('/api/turn-credentials');
@@ -524,6 +525,37 @@ async function getRTCConfiguration() {
             ]
         };
     }
+    */
+
+    // Using static OpenRelay TURN configuration
+    console.log("Using static OpenRelay TURN configuration.");
+    const configuration = {
+        iceServers: [
+            // STUN servers (recommended)
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            // { urls: 'stun:openrelay.metered.ca:80' }, // Optional OpenRelay STUN
+
+            // OpenRelay TURN servers
+            {
+                urls: 'turn:openrelay.metered.ca:80',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            }
+            // If you need TCP support specifically:
+            // {
+            //     urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            //     username: 'openrelayproject',
+            //     credential: 'openrelayproject'
+            // }
+        ]
+    };
+    return configuration; // Return the static configuration
 }
 // --- End: Added RTC Configuration Function ---
 
