@@ -61,9 +61,8 @@ SecureShare (now FoxFile.org) is a secure, end-to-end encrypted file sharing app
     *   **Securely** configure the `TURN_SECRET` environment variable before starting the Node.js server. This secret is used to generate temporary TURN credentials.
         ```bash
         # Example for Linux/macOS
-        export TURN_SECRET="a9F$kL7p!zR@3wE*cHmG&jN5sBvY^dXq" 
+        export TURN_SECRET="YOUR_SECRET" 
         # Example for Windows (PowerShell)
-        # $env:TURN_SECRET = "a9F$kL7p!zR@3wE*cHmG&jN5sBvY^dXq"
         ```
     *   Update the TURN server address (`turn:foxfile.org:3478`) in `config.js` if it differs from yours.
 
