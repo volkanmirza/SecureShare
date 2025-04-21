@@ -99,6 +99,8 @@ const translations = {
         // Popup translations
         "successTitle": "Success!",
         "okButton": "OK",
+        "infoTitle": "Information",
+        "connectionTimeoutMessage": "Connection timed out after 10 seconds. Please check the 'Troubleshooting Connection Issues' section below for possible reasons and solutions.",
         // Donation Button
         "donateButton": "Support Us",
         "donateTooltipTitle": "If You Love This Project, You Can Support It!",
@@ -287,6 +289,8 @@ const translations = {
         // Popup translations (Turkish)
         "successTitle": "Başarılı!",
         "okButton": "Tamam",
+        "infoTitle": "Bilgi",
+        "connectionTimeoutMessage": "Bağlantı 10 saniye sonra zaman aşımına uğradı. Olası nedenler ve çözümler için lütfen aşağıdaki 'Bağlantı Sorunlarını Giderme' bölümünü kontrol edin.",
         // Donation Button (Turkish)
         "donateButton": "Destek Ol",
         "donateTooltipTitle": "Bu Projeyi Sevdiysen Destek Olabilirsin!",
@@ -360,9 +364,9 @@ const translations = {
         // FAQ Section (Turkish)
         "faqTitle": "Bağlantı Sorunlarını Giderme",
         "faqItem1Title": "1. Farklı Ağlardaki Cihazlar (Örn. Ev Wi-Fi vs. Doğrudan İnternet)",
-        "faqItem1Text1": "Bir cihaz ev yönlendiricisinin (NAT/Güvenlik Duvarı) arkasındaysa ve diğeri doğrudan internete bağlıysa, yönlendirici WebRTC'nin ihtiyaç duyduğu doğrudan bağlantı girişimini engelleyebilir.",
+        "faqItem1Text1": "Bir cihaz ev yönlendiricisinin (NAT/Firewall) arkasındaysa ve diğeri doğrudan internete bağlıysa, yönlendirici WebRTC'nin ihtiyaç duyduğu doğrudan bağlantı girişimini engelleyebilir.",
         "faqItem1Text2": "'Bağlanıyor...' durumu devam edebilir çünkü cihazlar sinyal sunucusu aracılığıyla birbirini bulabilir ancak doğrudan veri kanalını kuramaz.",
-        "faqItem1Text3": "Mobil ağların genellikle daha izin verici farklı NAT/Güvenlik Duvarı yapılandırmaları vardır, bu da ev Wi-Fi'sinin başarısız olduğu durumlarda (bazen TURN röleleri aracılığıyla) bağlantılara izin verebilir.",
+        "faqItem1Text3": "Mobil ağların genellikle daha izin verici farklı NAT/Firewall yapılandırmaları vardır, bu da ev Wi-Fi'sinin başarısız olduğu durumlarda (bazen TURN röleleri aracılığıyla) bağlantılara izin verebilir.",
         "faqItem2Title": "2. Aynı Wi-Fi'deki Cihazlar, Ancak Yalnızca Biri Bağlanıyor",
         "faqItem2Text1": "Wi-Fi'deki bir bilgisayar bağlanabiliyor ancak *aynı* Wi-Fi'deki bir telefon bağlanamıyorsa, sorun büyük olasılıkla telefonun kendisindedir.",
         "faqItem2Text2": "Telefonda WebRTC bağlantılarını engelleyebilecek güvenlik uygulamalarını (Güvenlik Duvarları, VPN'ler) kontrol edin.",
