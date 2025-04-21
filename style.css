@@ -409,3 +409,18 @@ footer {
 .accordion-content.active {
     max-height: 2000px;
 }
+
+/* Specific styles for copy and native share buttons */
+#copy-btn,
+#share-native-btn {
+    background-color: var(--inputBackgroundColor); /* Use input background color */
+    border-color: var(--borderColor);
+    color: var(--secondaryTextColor); /* Use secondary text color for the icon */
+    transition: background-color var(--transitionSpeed) ease, color var(--transitionSpeed) ease, border-color var(--transitionSpeed) ease;
+}
+
+#copy-btn:hover,
+#share-native-btn:hover {
+    background-color: var(--infoBackgroundColor); /* Slightly different background on hover */
+    color: var(--textColor); /* Main text color on hover */
+}
