@@ -106,7 +106,7 @@
                             <input id="terms-checkbox" type="checkbox" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded">
                         </div>
                         <div class="ml-3 text-sm">
-                            <label for="terms-checkbox" class="text-gray-700 dark:text-gray-300" data-i18n="termsCheckboxLabel">Kullanıcı Sözleşmesi ve Gizlilik Politikası'nı okudum ve kabul ediyorum</label>
+                            <label for="terms-checkbox" class="text-gray-700 dark:text-white" data-i18n="termsCheckboxLabel">Kullanıcı Sözleşmesi ve Gizlilik Politikası'nı okudum ve kabul ediyorum</label>
                             <button id="terms-link" class="ml-1 text-blue-600 dark:text-blue-400 hover:underline" type="button" data-i18n="termsLink">Sözleşmeyi Oku</button>
                             <p id="terms-error" class="hidden mt-1 text-sm text-red-600 dark:text-red-500" data-i18n="termsCheckboxRequired">Dosya paylaşmak için Kullanıcı Sözleşmesi'ni kabul etmelisiniz</p>
                         </div>
@@ -171,66 +171,62 @@
         <!-- Information Section -->
         <section class="mt-12 card p-6">
             <h2 class="text-2xl font-semibold mb-6 text-center" data-i18n="howItWorks">Nasıl Çalışır?</h2>
-            <!-- <div class="my-6 text-center">
-                <img src="usingshema.png" alt="Kullanım Şeması" class="mx-auto w-48 h-auto rounded-lg shadow-md">
-           </div>       -->
-            <!-- Step-by-step flow explanation -->
-            <div class="flow-explanation mb-8">
-                <div class="flow-steps">
-                    <div class="flow-step">
-                        <div class="flow-icon">
+            
+            <!-- Two Column Grid Layout (Steps Left, Image Right) -->
+            <div class="grid md:grid-cols-2 gap-8 items-start mb-8">
+
+                <!-- Left Column: Vertical Steps (Aligned Left by default) -->
+                <div class="space-y-6">
+                    <!-- Step 1 -->
+                    <div class="flex items-start">
+                        <div class="flow-icon-vertical mr-4">
                             <i class="fas fa-file-upload"></i>
                         </div>
-                        <div class="flow-content">
-                            <h3 class="flow-title" data-i18n="step1Title">1. Dosya Seçimi</h3>
-                            <p class="flow-text" data-i18n="step1Text">Gönderici dosyasını seçer ve paylaşım kodu oluşturulur.</p>
+                        <div class="flex-1">
+                            <h3 class="font-semibold mb-1" data-i18n="step1Title">1. Dosya Seçimi & Kod</h3>
+                            <p class="text-sm text-gray-600 dark:text-white" data-i18n="step1Text">Gönderici bir dosya seçer. Sunucu tarafından benzersiz bir paylaşım kodu oluşturulur.</p>
                         </div>
                     </div>
-                    
-                    <div class="flow-connector">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                    
-                    <div class="flow-step">
-                        <div class="flow-icon">
+                    <!-- Step 2 -->
+                     <div class="flex items-start">
+                        <div class="flow-icon-vertical mr-4">
                             <i class="fas fa-key"></i>
                         </div>
-                        <div class="flow-content">
-                            <h3 class="flow-title" data-i18n="step2Title">2. Kod Paylaşımı</h3>
-                            <p class="flow-text" data-i18n="step2Text">Gönderici, paylaşım kodunu alıcıya iletir.</p>
+                        <div class="flex-1">
+                            <h3 class="font-semibold mb-1" data-i18n="step2Title">2. Kod Paylaşımı</h3>
+                            <p class="text-sm text-gray-600 dark:text-white" data-i18n="step2Text">Gönderici, paylaşım kodunu alıcıya iletir.</p>
                         </div>
                     </div>
-                    
-                    <div class="flow-connector">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                    
-                    <div class="flow-step">
-                        <div class="flow-icon">
+                    <!-- Step 3 -->
+                     <div class="flex items-start">
+                        <div class="flow-icon-vertical mr-4">
                             <i class="fas fa-handshake"></i>
                         </div>
-                        <div class="flow-content">
-                            <h3 class="flow-title" data-i18n="step3Title">3. Bağlantı</h3>
-                            <p class="flow-text" data-i18n="step3Text">Alıcı kodu girer ve güvenli bağlantı kurulur.</p>
+                        <div class="flex-1">
+                            <h3 class="font-semibold mb-1" data-i18n="step3Title">3. Güvenli Bağlantı</h3>
+                            <p class="text-sm text-gray-600 dark:text-white" data-i18n="step3Text">Alıcı kodu girer. Sunucuya kurulan güvenli WebSocket bağlantısı iki kullanıcıyı eşleştirir.</p>
                         </div>
                     </div>
-                    
-                    <div class="flow-connector">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                    
-                    <div class="flow-step">
-                        <div class="flow-icon">
+                    <!-- Step 4 -->
+                     <div class="flex items-start">
+                        <div class="flow-icon-vertical mr-4">
                             <i class="fas fa-shield-alt"></i>
                         </div>
-                        <div class="flow-content">
-                            <h3 class="flow-title" data-i18n="step4Title">4. Güvenli Transfer</h3>
-                            <p class="flow-text" data-i18n="step4Text">Dosya şifreli olarak doğrudan alıcıya aktarılır.</p>
+                        <div class="flex-1">
+                            <h3 class="font-semibold mb-1" data-i18n="step4Title">4. Güvenli P2P Aktarım</h3>
+                            <p class="text-sm text-gray-600 dark:text-white" data-i18n="step4Text">Güvenli bağlantı kurulduktan sonra, şifrelenmiş dosya doğrudan cihazlar arasında (P2P) aktarılır.</p>
                         </div>
                     </div>
                 </div>
+
+                <!-- Right Column: Image (Aligned Right on md+) -->
+                <div class="flex justify-center md:justify-end items-center">
+                    <img src="usingshema.png" alt="How it works diagram" class="w-full max-w-xs h-auto rounded-lg"> 
+                </div>
+
             </div>
-            
+            <!-- End Two Column Grid Layout -->
+
             <!-- Feature highlights -->
             <div class="grid md:grid-cols-3 gap-6">
                 <div class="feature-card">
