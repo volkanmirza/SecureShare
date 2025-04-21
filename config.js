@@ -167,7 +167,28 @@ const translations = {
         // Terms Checkbox
         "termsCheckboxLabel": "I have read and agree to the Terms of Service and Privacy Policy",
         "termsLink": "Read Terms",
-        "termsCheckboxRequired": "You must accept the Terms of Service to share files"
+        "termsCheckboxRequired": "You must accept the Terms of Service to share files",
+
+        // FAQ Section
+        "faqTitle": "Troubleshooting Connection Issues",
+        "faqItem1Title": "1. Devices on Different Networks (e.g., Home Wi-Fi vs. Direct Internet)",
+        "faqItem1Text1": "If one device is behind a home router (NAT/Firewall) and the other is directly connected to the internet, the router might block the direct connection attempt needed by WebRTC.",
+        "faqItem1Text2": "The 'Connecting...' status might persist because devices can find each other via the signaling server but cannot establish the direct data channel.",
+        "faqItem1Text3": "Mobile networks often have different NAT/Firewall configurations that might be more permissive, allowing connections (sometimes via TURN relays) where home Wi-Fi fails.",
+        "faqItem2Title": "2. Devices on the Same Wi-Fi, but Only One Connects",
+        "faqItem2Text1": "If a computer on Wi-Fi can connect, but a phone on the *same* Wi-Fi cannot, the issue likely lies with the phone itself.",
+        "faqItem2Text2": "Check for security apps (Firewalls, VPNs) on the phone that might interfere with WebRTC connections.",
+        "faqItem2Text3": "Review the phone's Wi-Fi or privacy settings for any restrictions on peer-to-peer connections.",
+        "faqItem2Text4": "Ensure the phone's operating system and browser have necessary permissions for network communication.",
+        "faqItem3Title": "3. Browser Issues",
+        "faqItem3Text1": "Sometimes the problem can be specific to the browser.",
+        "faqItem3Text2": "Try clearing the browser's cache and site data for FoxFile.",
+        "faqItem3Text3": "Attempt the connection using a different browser on the problematic device.",
+        "faqItem3Text4": "Ensure your browser is up-to-date, as older versions might have WebRTC compatibility issues.",
+        "faqItem4Title": "4. General Tips",
+        "faqItem4Text1": "Ensure both devices have a stable internet connection.",
+        "faqItem4Text2": "Temporarily disabling firewalls or VPNs (if safe to do so) can help identify if they are the cause.",
+        "faqItem4Text3": "Try connecting via a different network (e.g., switch from Wi-Fi to mobile data or vice versa) to see if the network environment is the factor."
     },
     tr: {
         // Header
@@ -334,7 +355,28 @@ const translations = {
         // Terms Checkbox
         "termsCheckboxLabel": "Kullanıcı Sözleşmesi ve Gizlilik Politikası'nı okudum ve kabul ediyorum",
         "termsLink": "Sözleşmeyi Oku",
-        "termsCheckboxRequired": "Dosya paylaşmak için Kullanıcı Sözleşmesi'ni kabul etmelisiniz"
+        "termsCheckboxRequired": "Dosya paylaşmak için Kullanıcı Sözleşmesi'ni kabul etmelisiniz",
+
+        // FAQ Section (Turkish)
+        "faqTitle": "Bağlantı Sorunlarını Giderme",
+        "faqItem1Title": "1. Farklı Ağlardaki Cihazlar (Örn. Ev Wi-Fi vs. Doğrudan İnternet)",
+        "faqItem1Text1": "Bir cihaz ev yönlendiricisinin (NAT/Güvenlik Duvarı) arkasındaysa ve diğeri doğrudan internete bağlıysa, yönlendirici WebRTC'nin ihtiyaç duyduğu doğrudan bağlantı girişimini engelleyebilir.",
+        "faqItem1Text2": "'Bağlanıyor...' durumu devam edebilir çünkü cihazlar sinyal sunucusu aracılığıyla birbirini bulabilir ancak doğrudan veri kanalını kuramaz.",
+        "faqItem1Text3": "Mobil ağların genellikle daha izin verici farklı NAT/Güvenlik Duvarı yapılandırmaları vardır, bu da ev Wi-Fi'sinin başarısız olduğu durumlarda (bazen TURN röleleri aracılığıyla) bağlantılara izin verebilir.",
+        "faqItem2Title": "2. Aynı Wi-Fi'deki Cihazlar, Ancak Yalnızca Biri Bağlanıyor",
+        "faqItem2Text1": "Wi-Fi'deki bir bilgisayar bağlanabiliyor ancak *aynı* Wi-Fi'deki bir telefon bağlanamıyorsa, sorun büyük olasılıkla telefonun kendisindedir.",
+        "faqItem2Text2": "Telefonda WebRTC bağlantılarını engelleyebilecek güvenlik uygulamalarını (Güvenlik Duvarları, VPN'ler) kontrol edin.",
+        "faqItem2Text3": "Telefonun Wi-Fi veya gizlilik ayarlarında eşler arası bağlantılarla ilgili herhangi bir kısıtlama olup olmadığını gözden geçirin.",
+        "faqItem2Text4": "Telefonun işletim sistemi ve tarayıcısının ağ iletişimi için gerekli izinlere sahip olduğundan emin olun.",
+        "faqItem3Title": "3. Tarayıcı Sorunları",
+        "faqItem3Text1": "Bazen sorun tarayıcıya özgü olabilir.",
+        "faqItem3Text2": "Tarayıcının önbelleğini ve FoxFile için site verilerini temizlemeyi deneyin.",
+        "faqItem3Text3": "Sorunlu cihazda farklı bir tarayıcı kullanarak bağlantıyı deneyin.",
+        "faqItem3Text4": "Tarayıcınızın güncel olduğundan emin olun, eski sürümlerde WebRTC uyumluluk sorunları olabilir.",
+        "faqItem4Title": "4. Genel İpuçları",
+        "faqItem4Text1": "Her iki cihazın da stabil bir internet bağlantısına sahip olduğundan emin olun.",
+        "faqItem4Text2": "Güvenlik duvarlarını veya VPN'leri geçici olarak devre dışı bırakmak (güvenliyse), sorunun kaynağı olup olmadıklarını belirlemeye yardımcı olabilir.",
+        "faqItem4Text3": "Ağ ortamının faktör olup olmadığını görmek için farklı bir ağ üzerinden bağlanmayı deneyin (örn. Wi-Fi'den mobil veriye geçiş veya tam tersi)."
     }
 };
 

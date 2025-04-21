@@ -396,6 +396,56 @@
                     </div>
                 </div>
             </div>
+
+            <!-- FAQ Accordion Item -->
+            <div class="accordion-item mt-3">
+                <button class="accordion-header card p-4 w-full text-left font-semibold flex justify-between items-center">
+                    <span class="flex items-center">
+                        <i class="fas fa-question-circle text-yellow-500 mr-2"></i>
+                        <span data-i18n="faqTitle">Troubleshooting Connection Issues</span>
+                    </span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="accordion-content card mt-1 p-6 hidden">
+                    <div class="space-y-4 text-sm">
+                        <div>
+                            <h4 class="font-medium mb-1" data-i18n="faqItem1Title">1. Devices on Different Networks (e.g., Home Wi-Fi vs. Direct Internet)</h4>
+                            <p data-i18n="faqItem1Text1">If one device is behind a home router (NAT/Firewall) and the other is directly connected to the internet, the router might block the direct connection attempt needed by WebRTC.</p>
+                            <ul class="list-disc ml-6 mt-2 space-y-1">
+                                <li data-i18n="faqItem1Text2">The 'Connecting...' status might persist because devices can find each other via the signaling server but cannot establish the direct data channel.</li>
+                                <li data-i18n="faqItem1Text3">Mobile networks often have different NAT/Firewall configurations that might be more permissive, allowing connections (sometimes via TURN relays) where home Wi-Fi fails.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-medium mb-1" data-i18n="faqItem2Title">2. Devices on the Same Wi-Fi, but Only One Connects</h4>
+                            <p data-i18n="faqItem2Text1">If a computer on Wi-Fi can connect, but a phone on the *same* Wi-Fi cannot, the issue likely lies with the phone itself.</p>
+                            <ul class="list-disc ml-6 mt-2 space-y-1">
+                                <li data-i18n="faqItem2Text2">Check for security apps (Firewalls, VPNs) on the phone that might interfere with WebRTC connections.</li>
+                                <li data-i18n="faqItem2Text3">Review the phone's Wi-Fi or privacy settings for any restrictions on peer-to-peer connections.</li>
+                                <li data-i18n="faqItem2Text4">Ensure the phone's operating system and browser have necessary permissions for network communication.</li>
+                            </ul>
+                        </div>
+                         <div>
+                            <h4 class="font-medium mb-1" data-i18n="faqItem3Title">3. Browser Issues</h4>
+                            <p data-i18n="faqItem3Text1">Sometimes the problem can be specific to the browser.</p>
+                            <ul class="list-disc ml-6 mt-2 space-y-1">
+                                <li data-i18n="faqItem3Text2">Try clearing the browser's cache and site data for FoxFile.</li>
+                                <li data-i18n="faqItem3Text3">Attempt the connection using a different browser on the problematic device.</li>
+                                 <li data-i18n="faqItem3Text4">Ensure your browser is up-to-date, as older versions might have WebRTC compatibility issues.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-medium mb-1" data-i18n="faqItem4Title">4. General Tips</h4>
+                             <ul class="list-disc ml-6 mt-2 space-y-1">
+                                <li data-i18n="faqItem4Text1">Ensure both devices have a stable internet connection.</li>
+                                <li data-i18n="faqItem4Text2">Temporarily disabling firewalls or VPNs (if safe to do so) can help identify if they are the cause.</li>
+                                 <li data-i18n="faqItem4Text3">Try connecting via a different network (e.g., switch from Wi-Fi to mobile data or vice versa) to see if the network environment is the factor.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End FAQ Accordion Item -->
         </div>
     </section>
 
