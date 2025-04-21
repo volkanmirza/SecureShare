@@ -1,5 +1,7 @@
 // client.js - Client-side JavaScript for P2P file sharing application
 document.addEventListener('DOMContentLoaded', function() {
+    let toastTimeoutId = null; // Moved declaration to the top of the scope
+
     // Initialize language and theme settings
     if (window.appConfig) {
         window.appConfig.initializeSettings();
@@ -40,17 +42,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // DOM Elements
+    // DOM Elements (Ensure all are referenced, remove wrappers if not needed)
     const fileInput = document.getElementById('file-input');
     const dropZone = document.getElementById('drop-zone');
-    const filePrompt = document.getElementById('file-prompt');
-    const fileName = document.getElementById('file-name');
-    const fileSize = document.getElementById('file-size');
-    const fileIcon = document.getElementById('file-icon');
+    const fileIcon = document.getElementById('file-icon'); 
+    const filePrompt = document.getElementById('file-prompt'); 
+    const fileName = document.getElementById('file-name');      
+    const fileSize = document.getElementById('file-size');      
+    const qrcodeContainer = document.getElementById('qrcode-container');
     const shareBtn = document.getElementById('share-btn');
     const shareResult = document.getElementById('share-result');
     const shareCode = document.getElementById('share-code');
     const copyBtn = document.getElementById('copy-btn');
+    const shareNativeBtn = document.getElementById('share-native-btn'); // <-- Add this line
     const statusSender = document.getElementById('status-sender');
     
     const receiveCode = document.getElementById('receive-code');
@@ -65,7 +69,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadBtn = document.getElementById('download-btn');
     const toast = document.getElementById('toast');
     
-    const qrcodeContainer = document.getElementById('qrcode-container'); // QR Code container
     const qrcodePrompt = document.getElementById('qrcode-prompt'); // QR Code prompt text
     const qrcodeElement = document.getElementById('qrcode'); // Actual QR code element
     
@@ -376,94 +379,51 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // --- Start: Handle Code from URL Parameter ---
     try {
+        console.log("Checking for URL parameters..."); // Log 0
         const urlParams = new URLSearchParams(window.location.search);
         const codeFromUrl = urlParams.get('code');
         
         if (codeFromUrl) {
-            console.log(`Code found in URL: ${codeFromUrl}`);
+            console.log(`Code found in URL: ${codeFromUrl}`); // Log 1
             
-            // URL kodunu işlemek için bir fonksiyon oluştur
-            const processUrlCode = async () => {
-                // Önce gerekli DOM elemanlarının yüklendiğinden emin ol
-                if (!receiveCode || !receiveBtn) {
-                    console.error("Required DOM elements not found: receiveCode or receiveBtn");
+            // This function now ONLY fills the code input
+            const processUrlCode = () => { // Removed async as it's no longer needed here
+                console.log("processUrlCode function started (filling code only)."); // Log A updated
+                const receiveCodeElement = document.getElementById('receive-code');
+                console.log("receiveCodeElement found?", receiveCodeElement); // Log B
+                
+                if (!receiveCodeElement) {
+                    console.error("Required DOM element not found: receive-code");
                     return;
                 }
                 
                 // Kodu alana yerleştir
-                receiveCode.value = codeFromUrl.trim().toUpperCase();
-                showToast(getTranslation('codeReceivedFromUrl')); // Kullanıcıyı bilgilendir
-                
+                console.log("Attempting to set receiveCode value..."); // Log 2
+                receiveCodeElement.value = codeFromUrl.trim().toUpperCase();
+                console.log("receiveCode value after set:", receiveCodeElement.value); // Log 3
+                showToast(getTranslation('codeReceivedFromUrl')); 
+                console.log("Code filled from URL. Waiting for user to click connect.");
+
+                // --- REMOVED WebSocket check and auto-click logic --- 
+                /*
                 console.log("Ensuring WebSocket connection before auto-connect...");
-                
-                // WebSocket bağlantısının hazır olmasını bekle
-                if (!socket || socket.readyState !== WebSocket.OPEN) {
-                    console.log("WebSocket not ready, initializing and waiting...");
-                    initWebSocket();
-                    
-                    // WebSocket hazır olana kadar bekle (max 5 saniye)
-                    const socketReady = await new Promise((resolve) => {
-                        const checkSocket = () => {
-                            if (socket && socket.readyState === WebSocket.OPEN) {
-                                console.log("WebSocket is now OPEN and ready");
-                                resolve(true);
-                            } else if (checkCount > 50) { // 50 x 100ms = 5 saniye
-                                console.warn("WebSocket failed to open after timeout");
-                                resolve(false);
-                            } else {
-                                checkCount++;
-                                console.log(`Waiting for WebSocket... State: ${socket ? socket.readyState : 'no socket'}, attempt: ${checkCount}`);
-                                setTimeout(checkSocket, 100);
-                            }
-                        };
-                        let checkCount = 0;
-                        checkSocket();
-                    });
-                    
-                    if (!socketReady) {
-                        console.error("WebSocket connection failed, cannot auto-connect");
-                        showToast(getTranslation('connectionError'), true);
-                        return;
-                    }
-                } else {
-                    console.log("WebSocket already open and ready");
-                }
-                
+                // ... (WebSocket check and wait logic) ...
                 console.log("WebSocket ready, preparing to auto-click connect button...");
-                
-                // Butonun etkinleşmesini bekle ve tıkla
-                let clickAttempts = 0;
-                const maxAttempts = 5;
-                
-                const attemptButtonClick = () => {
-                    clickAttempts++;
-                    console.log(`Auto-click attempt ${clickAttempts}/${maxAttempts}. Button disabled: ${receiveBtn.disabled}`);
-                    
-                    if (receiveBtn.disabled === false) {
-                        console.log('Auto-clicking connect button...');
-                        receiveBtn.click(); // Tıklama olayını tetikle
-                        return true;
-                    } else if (clickAttempts < maxAttempts) {
-                        console.log(`Button disabled, scheduling next attempt in 1 second...`);
-                        setTimeout(attemptButtonClick, 1000);
-                        return false;
-                    } else {
-                        console.log('Max attempts reached. Button still disabled, giving up auto-click');
-                        showToast(getTranslation('autoConnectFailed'), true);
-                        return false;
-                    }
-                };
-                
-                // İlk tıklama denemesini başlat (2 saniye gecikmeyle)
-                setTimeout(attemptButtonClick, 2000);
+                // ... (auto-click logic) ...
+                */
+               // --- End REMOVED section ---
             };
-            
+
             // DOMContentLoaded olayı içindeyse yürüt, değilse sayfa tam yüklendikten sonra
             if (document.readyState === 'loading') {
+                console.log("DOM not ready, adding listener for processUrlCode."); // Log C
                 document.addEventListener('DOMContentLoaded', processUrlCode);
             } else {
+                console.log("DOM ready, executing processUrlCode directly."); // Log D
                 processUrlCode();
             }
+        } else {
+            console.log("No 'code' parameter found in URL."); // Log E
         }
     } catch (e) {
         console.error("Error processing URL parameters:", e);
@@ -535,6 +495,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.warn("QR code elements or library not found.");
                     }
                     // --- End QR Code Generation ---
+
+                    // Show native share button if API is available
+                    if (navigator.share) {
+                        shareNativeBtn.classList.remove('hidden');
+                    }
+                    
+                    // UI Update for QR Code:
+                    if (fileIcon) fileIcon.classList.add('hidden');         // <-- Hide Icon
+                    if (filePrompt) filePrompt.classList.add('hidden');       // Hide Prompt
+                    if (qrcodeContainer) qrcodeContainer.classList.remove('hidden'); // Show QR Container
+                    if (fileName) fileName.classList.remove('hidden');     // Ensure File Name is visible
+                    if (fileSize) fileSize.classList.remove('hidden');     // Ensure File Size is visible
+                    
+                    // Generate QR Code (already existing logic)
+                    // ... (QR generation code) ...
+                    
+                    // Show native share button if API is available
+                    // ... (native share button logic) ...
                     break;
                     
                 case 'receiver-connected': // Received by sender
@@ -1146,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             handleReceiveComplete();
                         }
                     }
-                 } else {
+                } else {
                     console.warn(`Invalid chunk: Segment ${segmentIndex}, Chunk ${chunkIndex}, Already received: ${!!segment.buffer[chunkIndex]}`);
                 }
             } catch (error) {
@@ -1445,6 +1423,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Also ensure popup is hidden on general reset
         hideSuccessPopup(); 
+
+        // Hide native share button on reset
+        if (shareNativeBtn) {
+            shareNativeBtn.classList.add('hidden');
+        }
+        // Reset file input area specifically
+        if (fileIcon) fileIcon.classList.remove('hidden');      // <-- Show Icon
+        if (filePrompt) filePrompt.classList.remove('hidden');   // Show Prompt
+        if (fileName) {                                        // Hide File Name
+            fileName.textContent = '';
+            fileName.classList.add('hidden');
+        }
+        if (fileSize) {                                        // Hide File Size
+            fileSize.textContent = '';
+            fileSize.classList.add('hidden');
+        }
+        if (qrcodeContainer) qrcodeContainer.classList.add('hidden'); // Hide QR Container
+        
+        // ... rest of reset code (like shareNativeBtn) ...
     }
     
     // Format file size in human-readable form
@@ -1457,7 +1454,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Show a toast notification (Refined)
-    let toastTimeoutId = null; // Variable to hold the timeout ID
     function showToast(message, isError = false) {
         if (!toast || !message) return; 
 
@@ -1547,31 +1543,28 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle file select from input or drag-drop
     function handleFileSelect(file) {
-        console.log("handleFileSelect called with file:", file?.name); // Log function call and filename
-        // Reset previous share state if a new file is selected after sharing
-        if (!shareResult.classList.contains('hidden')) {
-            console.log('New file selected while a share was active. Resetting UI.');
-            resetUI();
-            // Optionally re-initialize WebSocket if resetUI doesn't handle it sufficiently
-            // initWebSocket(); 
+        console.log("handleFileSelect called with file:", file?.name);
+        // Partial Reset if share was active (keep code input visible)
+        if (!shareResult.classList.contains('hidden')) { 
+            if (qrcodeContainer) qrcodeContainer.classList.add('hidden');
+            if (shareNativeBtn) shareNativeBtn.classList.add('hidden');
         }
 
         selectedFile = file;
+        console.log("Updating UI elements for selected file...");
         
-        console.log("Updating UI elements..."); // Log before UI update
-        // Update UI
-        filePrompt.classList.add('hidden'); // <-- Hide the prompt
-        // filePrompt.textContent = getTranslation('selectedFile'); // No need to change text if hidden
-        fileName.textContent = file.name;
-        fileSize.textContent = formatFileSize(file.size);
-        fileIcon.textContent = getFileIcon(file.name);
-        
-        fileName.classList.remove('hidden');
-        fileSize.classList.remove('hidden');
-        
-        // console.log("Enabling share button..."); // Log before enabling button - REMOVED
-        // shareBtn.disabled = false; // <-- REMOVED THIS LINE
-        // console.log("shareBtn disabled state after update:", shareBtn.disabled); // Log button state - REMOVED
+        // UI Update for File Selected:
+        if (fileIcon) fileIcon.classList.remove('hidden');      // <-- Show Icon
+        if (filePrompt) filePrompt.classList.add('hidden');       // Hide Prompt
+        if (fileName) {                                        // Show File Name
+            fileName.textContent = file.name;
+            fileName.classList.remove('hidden');
+        }
+        if (fileSize) {                                        // Show File Size
+            fileSize.textContent = formatFileSize(file.size);
+            fileSize.classList.remove('hidden');
+        }
+        if (qrcodeContainer) qrcodeContainer.classList.add('hidden'); // Hide QR Container
     }
     
     // Share button click
@@ -1629,9 +1622,52 @@ document.addEventListener('DOMContentLoaded', function() {
     // Copy button click
     copyBtn.addEventListener('click', function() {
         shareCode.select();
-        document.execCommand('copy');
-        showToast(getTranslation('codeCopied'));
+        navigator.clipboard.writeText(shareCode.value).then(() => {
+             showToast(getTranslation('codeCopied'));
+         }).catch(err => {
+             console.error('Failed to copy code: ', err);
+             // Fallback for older browsers might be needed if clipboard API fails
+             try {
+                 document.execCommand('copy');
+                 showToast(getTranslation('codeCopied'));
+             } catch (execErr) {
+                 console.error('Fallback copy failed: ', execErr);
+                 showToast('Failed to copy code automatically.', true);
+             }
+         });
     });
+    
+    // Native Share button click (Add this event listener)
+    if (shareNativeBtn) {
+        shareNativeBtn.addEventListener('click', async () => {
+            const code = shareCode.value;
+            const fileNameText = selectedFile ? ` (${selectedFile.name})` : '';
+            const shareData = {
+                title: 'FoxFile.org Share Code',
+                text: `${getTranslation('shareCode')}: ${code}${fileNameText}`, // Example: Share code: XYZ123 (document.pdf)
+                url: `${window.location.origin}${window.location.pathname}?code=${code}`
+            };
+
+            try {
+                if (!navigator.share) {
+                     console.warn('Web Share API not available.');
+                     showToast('Sharing not supported on this browser/device.', true);
+                     return;
+                 }
+                 await navigator.share(shareData);
+                console.log('Code shared successfully');
+                // Optionally show a success toast, though the native UI usually indicates success
+            } catch (err) {
+                // Log errors except AbortError which means the user cancelled the share
+                if (err.name !== 'AbortError') {
+                    console.error('Error sharing code:', err);
+                    showToast('Error sharing code.', true);
+                } else {
+                     console.log('User cancelled share.');
+                 }
+            }
+        });
+    }
     
     // Receive button click
     receiveBtn.addEventListener('click', async function() { // Made async
@@ -1678,8 +1714,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize WebSocket on load
     initWebSocket();
 
-     // Initial UI state reset
-     resetUI();
+     // Initial UI state reset - ONLY run if no code is processed from URL
+     const urlParamsForReset = new URLSearchParams(window.location.search);
+     const codeFromUrlForReset = urlParamsForReset.get('code');
+     if (!codeFromUrlForReset) {
+         console.log("Initial resetUI called because no code in URL.");
+         resetUI();
+     } else {
+         console.log("Skipping initial resetUI because code was found in URL.");
+     }
 
     // Initialize settings (which includes applying initial language/translations)
      if (window.appConfig && typeof window.appConfig.initializeSettings === 'function') {

@@ -75,19 +75,27 @@
                     <!-- File Input Area -->
                     <div class="file-input-container flex-grow min-w-0">
                         <label for="file-input" class="file-input-label">
-                            <div id="drop-zone" class="rounded-lg p-8 text-center cursor-pointer transition-colors h-full flex flex-col justify-center">
+                            <div id="drop-zone" class="rounded-lg p-4 md:p-8 text-center cursor-pointer transition-colors h-full flex flex-col justify-center items-center relative overflow-hidden">
+                                <!-- File Icon (Managed by JS) -->
                                 <div id="file-icon" class="text-5xl mb-2">📁</div>
+
+                                <!-- Initial Prompt (Managed by JS) -->
                                 <p id="file-prompt" data-i18n="selectFilePrompt">Dosya seçmek için tıklayın veya sürükleyin</p>
-                                <p id="file-name" class="mt-2 font-medium hidden truncate"></p>
-                                <p id="file-size" class="text-sm hidden"></p>
+
+                                <!-- QR Code Container (Managed by JS, comes before file info in HTML for visual order) -->
+                                <div id="qrcode-container" class="hidden flex flex-col items-center justify-center text-center mt-3">
+                                    <p id="qrcode-prompt" class="text-sm mb-1" data-i18n="scanQrCodePrompt"></p>
+                                    <div id="qrcode"></div>
+                                </div>
+
+                                <!-- File Info (Managed by JS, appears below QR code when QR is visible) -->
+                                <div class="w-full flex flex-col items-center text-center mt-2">
+                                    <p id="file-name" class="hidden font-medium truncate max-w-full px-2"></p>
+                                    <p id="file-size" class="hidden text-sm"></p>
+                                </div>
                             </div>
                             <input type="file" id="file-input" class="hidden">
                         </label>
-                    </div>
-                    <!-- QR Code (Moved here, initially hidden) -->
-                    <div id="qrcode-container" class="flex-shrink-0 hidden flex flex-col items-center">
-                         <p id="qrcode-prompt" class="text-sm mb-1" data-i18n="scanQrCodePrompt"></p> 
-                         <div id="qrcode"></div>
                     </div>
                 </div>
                 
@@ -111,14 +119,16 @@
 
                 <div id="share-result" class="mt-6 hidden">
                     <div class="mb-2" data-i18n="shareCode">Paylaşım kodu:</div>
-                    <div class="flex">
+                    <div class="flex items-stretch">
                         <input type="text" id="share-code" class="flex-grow border rounded-l-md px-3 py-2 font-mono text-sm" readonly>
-                        <button id="copy-btn" class="px-4 rounded-r-md">
+                        <button id="copy-btn" class="px-4 border-t border-b border-gray-300 bg-gray-100 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600">
                             <i class="fas fa-copy"></i>
+                        </button>
+                        <button id="share-native-btn" title="Share Code" class="px-4 rounded-r-md border-t border-b border-r border-gray-300 bg-gray-100 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 hidden">
+                            <i class="fas fa-share-alt"></i>
                         </button>
                     </div>
                     <p id="status-sender" class="mt-2 text-sm"></p>
-                    <!-- QR Code was moved from here -->
                 </div>
             </section>
 
