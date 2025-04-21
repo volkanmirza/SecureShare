@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const fileName = document.getElementById('file-name');      
     const fileSize = document.getElementById('file-size');      
     const qrcodeContainer = document.getElementById('qrcode-container');
+    const uploadSection = document.getElementById('upload-section'); // <-- Ensure declaration is here
     const shareBtn = document.getElementById('share-btn');
     const shareResult = document.getElementById('share-result');
     const shareCode = document.getElementById('share-code');
@@ -386,9 +387,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (codeFromUrl) {
             console.log(`Code found in URL: ${codeFromUrl}`); // Log 1
             
-            // This function now ONLY fills the code input
-            const processUrlCode = () => { // Removed async as it's no longer needed here
+            // This function now ONLY fills the code input and hides upload section
+            const processUrlCode = () => { 
                 console.log("processUrlCode function started (filling code only)."); // Log A updated
+                
+                // Hide upload section immediately
+                if (uploadSection) { // This should now find the variable
+                    console.log("Hiding upload section as code found in URL.");
+                    uploadSection.classList.add('hidden');
+                } else {
+                    console.warn("Upload section element not found for hiding.");
+                }
+
                 const receiveCodeElement = document.getElementById('receive-code');
                 console.log("receiveCodeElement found?", receiveCodeElement); // Log B
                 
@@ -1442,6 +1452,58 @@ document.addEventListener('DOMContentLoaded', function() {
         if (qrcodeContainer) qrcodeContainer.classList.add('hidden'); // Hide QR Container
         
         // ... rest of reset code (like shareNativeBtn) ...
+
+        // Show upload section again
+        if (uploadSection) {
+            uploadSection.classList.remove('hidden');
+        }
+
+        // Reset file input area specifically
+        if (fileIcon) fileIcon.classList.remove('hidden');      
+        // ... (rest of file input area reset) ...
+        if (qrcodeContainer) qrcodeContainer.classList.add('hidden'); 
+
+        // Reset share result section
+        if (shareResult) shareResult.classList.add('hidden');
+        if (shareCode) shareCode.value = '';
+        if (statusSender) {
+            statusSender.textContent = '';
+            statusSender.classList.add('hidden'); 
+        }
+        if (shareNativeBtn) shareNativeBtn.classList.add('hidden');
+
+        // Reset receiver UI elements
+        if (receiveCode) receiveCode.value = '';
+        // ... (rest of receiver UI reset) ...
+
+        // Reset state variables
+        // ... (selectedFile, fileMetadata, etc.) ...
+
+        // Reset crypto state
+        sharedKey = null;
+        keyPair = null;
+
+        // Reset terms checkbox
+        if (termsCheckbox) termsCheckbox.checked = false;
+
+        // Also ensure popup is hidden on general reset
+        hideSuccessPopup(); 
+
+        // Clean up URL (remove ?code=...)
+        try {
+            if (window.history && window.history.pushState) {
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.delete('code'); // Remove 'code' parameter
+                window.history.pushState({ path: currentUrl.toString() }, '', currentUrl.toString());
+                console.log("URL cleaned.");
+            } else {
+                console.warn("Browser does not support history.pushState for URL cleaning.");
+            }
+        } catch(e) {
+            console.error("Error cleaning URL:", e);
+        }
+
+        console.log("UI and state reset complete.");
     }
     
     // Format file size in human-readable form
