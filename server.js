@@ -307,6 +307,28 @@ wss.on('connection', (ws, req) => {
                      }
                      break;
                     
+                case 'cancel_share':
+                    console.log(`[${connectionId}] Received 'cancel_share' request.`);
+                    const connectionInfo = connections.get(connectionId);
+                    if (connectionInfo && connectionInfo.isSharing && connectionInfo.activeCode) {
+                        const codeToCancel = connectionInfo.activeCode; // Kodu bir değişkende tut
+                        console.log(`[${connectionId}] Cancelling share for code ${codeToCancel}. Current state: isSharing=${connectionInfo.isSharing}, shareCode=${connectionInfo.shareCode}, activeCode=${connectionInfo.activeCode}`);
+                        // releaseCode fonksiyonu durumu sıfırlamalı
+                        releaseCode(codeToCancel, null); // Mantıksal iptal olduğu için ID null
+
+                        // Kontrol amaçlı: releaseCode çağrıldıktan sonra durumu tekrar logla
+                        const updatedInfo = connections.get(connectionId);
+                        if (updatedInfo) {
+                             console.log(`[${connectionId}] State AFTER releaseCode call: isSharing=${updatedInfo.isSharing}, shareCode=${updatedInfo.shareCode}, activeCode=${updatedInfo.activeCode}`);
+                        } else {
+                             console.log(`[${connectionId}] Connection info removed after releaseCode call? This shouldn't happen here.`);
+                        }
+
+                    } else {
+                         console.warn(`[${connectionId}] Received 'cancel_share' but user is not sharing or has no active code. isSharing=${connectionInfo?.isSharing}, activeCode=${connectionInfo?.activeCode}`);
+                    }
+                    break;
+                    
                 default:
                     console.warn(`[${connectionId}] Unknown message type:`, data.type);
             }
@@ -565,15 +587,13 @@ wss.on('connection', (ws, req) => {
             const sender = connections.get(senderId);
             // Sadece kodla eşleşiyorsa sıfırla (başka bir kod almış olabilir)
             if (sender && sender.activeCode === code) {
-                console.log(`[${closedConnectionId || 'Logic'}] Resetting status for sender ${senderId}. Current isSharing: ${sender.isSharing}`);
+                console.log(`[${closedConnectionId || 'Logic'}] Found sender ${senderId} for code ${code}. Resetting its status...`); // Log eklendi
+                console.log(`    BEFORE Reset: isSharing=${sender.isSharing}, shareCode=${sender.shareCode}, activeCode=${sender.activeCode}`); // Log eklendi
                 sender.activeCode = null;
                 sender.isSharing = false; // Paylaşımı DURDUR
                 sender.shareCode = null;
-                console.log(`[${closedConnectionId || 'Logic'}] Sender ${senderId} status updated: isSharing=${sender.isSharing}, shareCode=${sender.shareCode}, activeCode=${sender.activeCode}`);
+                console.log(`    AFTER Reset: isSharing=${sender.isSharing}, shareCode=${sender.shareCode}, activeCode=${sender.activeCode}`); // Log eklendi
 
-                // Eğer kod temizliği bağlantı kapanması *dışında* bir nedenle yapıldıysa
-                // (örn. indirme tamamlandı), diğerlerini burada bilgilendir.
-                // Bağlantı kapandıysa, 'close' olayındaki notify çalışacak.
                 if (closedConnectionId === null) {
                      console.log(`[Logic] Code released logically. Notifying peers about sender ${senderId} stopping share.`);
                      notifyLocalPeersAboutSharerLeft(senderId, sender.ip);
