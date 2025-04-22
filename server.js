@@ -238,7 +238,18 @@ wss.on('connection', (ws, req) => {
         resetTimeout();
         
         try {
-            const data = JSON.parse(message);
+            // --- YENİ: Mesajı önce string'e çevir --- 
+            const messageString = message.toString();
+            // --- BİTİŞ YENİ ---
+            const data = JSON.parse(messageString); // String'i parse et
+            const connectionId = ws.connectionId; // ID'yi al (try bloğu içinde daha güvenli)
+            const connectionInfo = connections.get(connectionId);
+
+            if (!connectionInfo) {
+                console.error(`Received message from unknown connection ID: ${connectionId}`);
+                return; 
+            }
+            console.log(`[${connectionId}] Message received: ${messageString}`); // Ham mesajı logla
             
             switch (data.type) {
                 case 'create-code':
@@ -333,13 +344,18 @@ wss.on('connection', (ws, req) => {
                     console.warn(`[${connectionId}] Unknown message type:`, data.type);
             }
         } catch (error) {
-            console.error('Error parsing message:', error);
+            const connectionIdForError = ws.connectionId || 'unknown'; // ID'yi almayı dene
+            console.error(`[${connectionIdForError}] Error parsing message or processing:`, error);
+            // Gelen ham mesajı da loglayalım (eğer string değilse bile)
+            console.error(`    Raw message that caused error:`, message);
             
             // Send error back to client
-            ws.send(JSON.stringify({
-                type: 'error',
-                message: 'Invalid message format'
-            }));
+            if (ws.readyState === WebSocket.OPEN) { // Hata göndermeden önce bağlantıyı kontrol et
+                 ws.send(JSON.stringify({
+                     type: 'error',
+                     message: 'Invalid message format'
+                 }));
+            }
         }
     });
     
