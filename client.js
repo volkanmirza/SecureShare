@@ -2373,6 +2373,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.warn("Error notifying sender about download:", notifyError);
             }
 
+            // --- YENİ: İndirme sonrası listeyi yenile --- 
+            console.log("Download complete. Requesting updated local peers list...");
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'get_local_peers' }));
+            }
+            // --- BİTİŞ: İndirme sonrası listeyi yenile --- 
+
         } catch (error) {
             console.error('Error assembling or downloading file:', error);
             showToast(getTranslation('fileAssemblyError'), true);
