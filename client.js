@@ -86,6 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Local Discovery Elements (Download Section)
     const localPeersList = document.getElementById('local-peers-list');
     const localScanStatus = document.getElementById('local-scan-status');
+    const refreshLocalPeersBtn = document.getElementById('refresh-local-peers-btn'); // <- Yeni Buton
     // --- BİTİŞ YENİ TANIMLAMALAR ---
     
     // Function to check if sharing should be enabled
@@ -2568,5 +2569,52 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Add event listener for the refresh button
+    if (refreshLocalPeersBtn) {
+        refreshLocalPeersBtn.addEventListener('click', () => {
+            console.log("Refresh local peers button clicked.");
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                // Optionally show a loading/spinning state on the button
+                const icon = refreshLocalPeersBtn.querySelector('i');
+                if (icon) icon.classList.add('fa-spin'); // Start spinning
+                refreshLocalPeersBtn.disabled = true; // Disable button during refresh
+
+                // Clear current list visually while refreshing (optional)
+                // const existingPeers = localPeersList.querySelectorAll('.local-peer-item');
+                // existingPeers.forEach(peer => peer.remove());
+                // if (localScanStatus) {
+                //    localScanStatus.textContent = getTranslation('scanningLocalNetwork');
+                //    localScanStatus.classList.remove('hidden');
+                // }
+                
+                socket.send(JSON.stringify({ type: 'get_local_peers' }));
+
+                // Re-enable button and stop spin after a short delay (or wait for response)
+                // Waiting for the response ('local_peers_list_with_codes') is better
+                // We can stop the spinner inside displayLocalPeersWithCodes
+            } else {
+                console.error("WebSocket not connected when trying to refresh local peers.");
+                showToast(getTranslation('connectionError'), true);
+            }
+        });
+    }
+
+    // Modify displayLocalPeersWithCodes to stop spinner
+    function displayLocalPeersWithCodes(peers) {
+        // Stop spinner and re-enable button if refresh was triggered
+        if (refreshLocalPeersBtn) {
+            const icon = refreshLocalPeersBtn.querySelector('i');
+            if (icon) icon.classList.remove('fa-spin');
+            refreshLocalPeersBtn.disabled = false;
+        }
+
+        if (!localPeersList || !localScanStatus) {
+           // ... (rest of the function remains the same) ...
+        }
+        
+        // ... (rest of the function remains the same) ...
+    }
+
     // --- End: Update for Local Discovery (Download Section) ---
 });
