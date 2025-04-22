@@ -247,58 +247,104 @@ wss.on('connection', (ws, req) => {
     });
     
     ws.on('close', () => {
-        console.log('WebSocket connection closed');
+        const connectionId = ws.connectionId; // ID'yi al
+        console.log(`[${connectionId}] WebSocket connection closed`); // Log güncellendi
         
-        // Clean up resources
         clearTimeout(timeout);
         
-        // Remove from connections
-        const connection = connections.get(connectionId);
-        if (connection) {
-            // If it had an active code, clean that up too
-            if (connection.activeCode) {
-                releaseCode(connection.activeCode);
-            }
-            
+        const closedConnectionInfo = connections.get(connectionId);
+        if (closedConnectionInfo) {
+            const wasSharing = closedConnectionInfo.isSharing;
+            const clientIp = closedConnectionInfo.ip;
+            const activeCode = closedConnectionInfo.activeCode;
+
+            console.log(`[${connectionId}] Removing connection info. Was sharing: ${wasSharing}, Code: ${activeCode}, IP: ${clientIp}`); // Detaylı log
             connections.delete(connectionId);
+
+            // Eğer aktif bir kodu varsa, onu temizle
+            if (activeCode) {
+                // releaseCode fonksiyonu zaten isSharing durumunu sıfırlar
+                releaseCode(activeCode, connectionId); 
+            }
+
+            // Eğer paylaşım yapıyorduysa (ve kodu temizlenmediyse bile) diğerlerini bilgilendir
+            // Not: releaseCode içinde notify çağrıldığı için bu belki gereksiz?
+            // Ama bağlantı aniden kapanırsa diye burada da kalsın.
+            if (wasSharing) {
+                notifyLocalPeersAboutSharerLeft(connectionId, clientIp);
+            }
+        } else {
+             console.warn(`[${connectionId}] Connection info not found during close event.`);
         }
     });
     
     ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
+        const connectionId = ws.connectionId;
+        console.error(`[${connectionId || 'unknown'}] WebSocket error:`, error);
+        // Hata durumunda da temizle
+        const errorConnectionInfo = connections.get(connectionId);
+        if (errorConnectionInfo) {
+             const wasSharingOnError = errorConnectionInfo.isSharing;
+             const clientIpOnError = errorConnectionInfo.ip;
+             const activeCodeOnError = errorConnectionInfo.activeCode;
+             console.log(`[${connectionId}] Removing connection info due to error. Was sharing: ${wasSharingOnError}, Code: ${activeCodeOnError}, IP: ${clientIpOnError}`); // Detaylı log
+             connections.delete(connectionId);
+             if (activeCodeOnError) {
+                  releaseCode(activeCodeOnError, connectionId);
+             }
+             if (wasSharingOnError) {
+                  notifyLocalPeersAboutSharerLeft(connectionId, clientIpOnError);
+             }
+        }
+         if (ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) {
+             ws.terminate();
+         }
     });
     
     // Handle creation of a new share code
     function handleCreateCode(connectionId, code) {
-        console.log('Creating code:', code);
+        console.log(`[${connectionId}] Handling create-code for code: ${code}`);
+        const connectionInfo = connections.get(connectionId);
+
+        if (!connectionInfo) {
+             console.error(`[${connectionId}] Cannot create code: Connection info not found!`);
+             return;
+        }
         
         // Check if code already exists
         if (codes.has(code)) {
-            ws.send(JSON.stringify({
+            console.warn(`[${connectionId}] Code ${code} already exists.`);
+            connectionInfo.ws.send(JSON.stringify({
                 type: 'error',
                 message: 'Kod zaten kullanımda, lütfen tekrar deneyin.'
             }));
             return;
         }
         
-        // Store the code
+        // Store the code mapping
         codes.set(code, {
             senderId: connectionId,
             receiverId: null,
             createdAt: Date.now()
         });
         
-        // Update connection's active code
-        const connection = connections.get(connectionId);
-        if (connection) {
-            connection.activeCode = code;
-        }
+        // --- ÖNEMLİ GÜNCELLEME --- 
+        // Update the connection's info in the connections Map
+        connectionInfo.activeCode = code;
+        connectionInfo.isSharing = true; // Paylaşım durumunu true yap
+        connectionInfo.shareCode = code;  // Paylaşım kodunu sakla
+        console.log(`[${connectionId}] Updated connection info: isSharing=${connectionInfo.isSharing}, shareCode=${connectionInfo.shareCode}, activeCode=${connectionInfo.activeCode}`);
+        // --- BİTİŞ ÖNEMLİ GÜNCELLEME --- 
         
-        // Confirm code creation
-        ws.send(JSON.stringify({
+        // Confirm code creation to the client
+        connectionInfo.ws.send(JSON.stringify({
             type: 'code-created',
             code: code
         }));
+
+        // Notify other local peers
+        console.log(`[${connectionId}] Notifying other local peers about new sharer...`);
+        notifyLocalPeersAboutNewSharer(connectionId, connectionInfo.ip);
     }
     
     // Handle joining an existing share code
@@ -428,24 +474,39 @@ wss.on('connection', (ws, req) => {
     }
     
     // Release a code
-    function releaseCode(code) {
+    function releaseCode(code, closedConnectionId = null) { // closedConnectionId: hangi bağlantının kapandığını belirtir
         if (codes.has(code)) {
             const codeInfo = codes.get(code);
-            console.log(`Releasing code ${code}`);
+            console.log(`[${closedConnectionId || 'Logic'}] Releasing code ${code}`);
 
-            // Clear activeCode from sender and receiver connections if they exist
-            const sender = connections.get(codeInfo.senderId);
-            if (sender && sender.activeCode === code) {
+            const senderId = codeInfo.senderId;
+            const receiverId = codeInfo.receiverId;
+            codes.delete(code); // Kodu sil
+
+            // --- ÖNEMLİ GÜNCELLEME --- 
+            // İlgili bağlantıların (hala aktifse) paylaşım durumunu sıfırla
+            const sender = connections.get(senderId);
+            if (sender && sender.activeCode === code) { 
+                console.log(`[${closedConnectionId || 'Logic'}] Resetting status for sender ${senderId}`);
                 sender.activeCode = null;
+                sender.isSharing = false; // Paylaşımı durdur
+                sender.shareCode = null;
+                // Sadece kod mantıksal olarak (örn. download complete) temizlendiğinde haber ver,
+                // bağlantı kapandığında zaten close event'i haber verecek.
+                if (closedConnectionId === null) { 
+                     notifyLocalPeersAboutSharerLeft(senderId, sender.ip);
+                }
             }
-            const receiver = connections.get(codeInfo.receiverId);
+            const receiver = connections.get(receiverId);
             if (receiver && receiver.activeCode === code) {
+                console.log(`[${closedConnectionId || 'Logic'}] Resetting activeCode for receiver ${receiverId}`);
                 receiver.activeCode = null;
+                // Alıcının isSharing durumu zaten false olmalı
             }
+            // --- BİTİŞ ÖNEMLİ GÜNCELLEME --- 
 
-            codes.delete(code);
         } else {
-            console.log(`Attempted to release non-existent code: ${code}`);
+            // console.log(`Attempted to release non-existent code: ${code}`);
         }
     }
 });
