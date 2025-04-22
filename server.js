@@ -251,6 +251,29 @@ wss.on('connection', (ws, req) => {
                     handleJoinCode(connectionId, data.code);
                     break;
 
+                case 'get_local_peers':
+                    console.log(`[${connectionId}] Received 'get_local_peers' request.`);
+                    // Mevcut bağlantı bilgilerini kullanarak listeyi yeniden oluştur ve gönder
+                    const currentIp = connectionInfo.ip; // Bağlantı bilgisinden IP'yi al
+                    const updatedLocalPeers = [];
+                    connections.forEach((peerInfo, peerId) => {
+                        if (peerId !== connectionId && peerInfo.ip === currentIp && peerInfo.isSharing && peerInfo.shareCode) {
+                            updatedLocalPeers.push({ 
+                                id: peerId, 
+                                code: peerInfo.shareCode 
+                            }); 
+                        }
+                    });
+                    // İstek yapan istemciye güncel listeyi gönder
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ 
+                            type: 'local_peers_list_with_codes',
+                            peers: updatedLocalPeers 
+                        }));
+                        console.log(`[${connectionId}] Sent updated local peers list:`, updatedLocalPeers);
+                    }
+                    break;
+
                 case 'public-key':
                     console.log(`Forwarding public key from ${connectionId}`);
                     forwardMessage(connectionId, 'public-key', data.key);
@@ -285,7 +308,7 @@ wss.on('connection', (ws, req) => {
                      break;
                     
                 default:
-                    console.warn('Unknown message type:', data.type);
+                    console.warn(`[${connectionId}] Unknown message type:`, data.type);
             }
         } catch (error) {
             console.error('Error parsing message:', error);

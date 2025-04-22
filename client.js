@@ -2609,6 +2609,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 //    localScanStatus.classList.remove('hidden');
                 // }
                 
+                // --- YENİ LOG --- 
+                console.log("Sending 'get_local_peers' message to server...");
+                // --- BİTİŞ YENİ LOG ---
                 socket.send(JSON.stringify({ type: 'get_local_peers' }));
 
                 // Re-enable button and stop spin after a short delay (or wait for response)
