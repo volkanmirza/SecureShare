@@ -2593,21 +2593,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 try {
                     const peerElement = document.createElement('button');
-                    // Temel sınıfı ekle (CSS hedeflemesi için)
                     peerElement.classList.add('local-peer-item'); 
-                    
-                    // DİĞER BUTONLARLA AYNI GÖRÜNÜM İÇİN .btn SINIFINI EKLE
                     peerElement.classList.add('btn'); 
                     
-                    // Kalan Tailwind sınıflarını ekle (bg-* ve rounded-* kaldırıldı)
+                    // Kalan Tailwind sınıflarını ekle (hover:bg-* kaldırıldı)
                     peerElement.classList.add(
                         'inline-flex', 'items-center', 'space-x-2', 'p-2',
-                        // 'bg-gray-100', // Açık tema arka planı kaldırıldı -> .btn'den gelmeli
-                        // 'rounded-md', // Yuvarlaklık kaldırıldı -> .btn'den gelmeli
-                        'hover:bg-gray-200', // Açık tema hover (belki bu da kaldırılabilir?)
+                        // 'hover:bg-gray-200', // Açık tema hover kaldırıldı
                         'transition-colors', 'cursor-pointer'
                     );
-                    // Styling artık .btn ve style.css'teki [data-theme='dark'] .local-peer-item/.btn seçicisi ile yönetilecek.
                     
                     peerElement.setAttribute('data-peer-id', peer.id);
                     peerElement.setAttribute('data-share-code', peer.code);
@@ -2733,21 +2727,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 try {
                     const peerElement = document.createElement('button');
-                    // Temel sınıfı ekle (CSS hedeflemesi için)
                     peerElement.classList.add('local-peer-item'); 
-                    
-                    // DİĞER BUTONLARLA AYNI GÖRÜNÜM İÇİN .btn SINIFINI EKLE
                     peerElement.classList.add('btn'); 
                     
-                    // Kalan Tailwind sınıflarını ekle (bg-* ve rounded-* kaldırıldı)
+                    // Kalan Tailwind sınıflarını ekle (hover:bg-* kaldırıldı)
                     peerElement.classList.add(
                         'inline-flex', 'items-center', 'space-x-2', 'p-2',
-                        // 'bg-gray-100', // Açık tema arka planı kaldırıldı -> .btn'den gelmeli
-                        // 'rounded-md', // Yuvarlaklık kaldırıldı -> .btn'den gelmeli
-                        'hover:bg-gray-200', // Açık tema hover (belki bu da kaldırılabilir?)
+                        // 'hover:bg-gray-200', // Açık tema hover kaldırıldı
                         'transition-colors', 'cursor-pointer'
                     );
-                    // Styling artık .btn ve style.css'teki [data-theme='dark'] .local-peer-item/.btn seçicisi ile yönetilecek.
                     
                     peerElement.setAttribute('data-peer-id', peer.id);
                     peerElement.setAttribute('data-share-code', peer.code);

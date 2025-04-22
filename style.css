@@ -475,13 +475,14 @@ footer {
     background-color: rgba(239, 68, 68, 0.2); /* Lighter red */
 }
 
-[data-theme='dark'] #local-peers-list .peer-button {
+[data-theme='dark'] #local-peers-list .local-peer-item {
     background-color: var(--accentColor);
     color: white;
     border-color: var(--accentColor);
 }
 
-[data-theme='dark'] #local-peers-list .peer-button:hover {
-    background-color: var(--accentHoverColor);
+[data-theme='dark'] #local-peers-list .local-peer-item:hover {
+    background-color: var(--accentHoverColor) !important;
     border-color: var(--accentHoverColor);
+    color: white;
 }
