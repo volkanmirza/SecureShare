@@ -131,6 +131,50 @@ server.listen(PORT, () => {
     }
 });
 
+// --- YARDIMCI FONKSİYONLAR (BAĞLANTI ÖNCESİNE TAŞINDI) ---
+
+// Generate a unique ID for connections
+function generateUniqueId() {
+    return Math.random().toString(36).substring(2, 15) + 
+           Math.random().toString(36).substring(2, 15);
+}
+
+function notifyLocalPeersAboutNewSharer(newSharerId, sharerIp) {
+    if (!sharerIp) {
+         console.warn(`[${newSharerId}] Cannot notify peers about new sharer, IP is missing.`); // Yeni Log
+         return; 
+    }
+    console.log(`[${newSharerId}] Notifying other local peers about new sharer...`); // Yeni Log
+    const message = JSON.stringify({ type: 'local_peer_added', peerId: newSharerId });
+     connections.forEach((clientInfo, clientId) => {
+         if (clientId !== newSharerId && clientInfo.ip === sharerIp && clientInfo.ws.readyState === WebSocket.OPEN) {
+             clientInfo.ws.send(message);
+             // console.log(`Notified ${clientId} about local peer ${newSharerId} joining`); // Bu log zaten vardı
+         }
+     });
+}
+
+function notifyLocalPeersAboutSharerLeft(leftSharerId, sharerIp) {
+    if (!sharerIp) {
+         console.warn(`[${leftSharerId}] Cannot notify peers about leaving, IP is missing.`); // Yeni Log
+         return; 
+    }
+    console.log(`[${leftSharerId}] Notifying other local peers about sharer leaving...`); // Yeni Log
+    const message = JSON.stringify({ type: 'local_peer_removed', peerId: leftSharerId });
+     connections.forEach((clientInfo, clientId) => {
+         if (clientId !== leftSharerId && clientInfo.ip === sharerIp && clientInfo.ws.readyState === WebSocket.OPEN) {
+             clientInfo.ws.send(message);
+             // console.log(`Notified ${clientId} about local peer ${leftSharerId} leaving`); // Bu log zaten vardı
+         }
+     });
+}
+
+function handleLocalCodeRequest(requestingWs, targetPeerId) {
+    // ... (fonksiyon içeriği aynı) ...
+}
+
+// --- BİTİŞ YARDIMCI FONKSİYONLAR ---
+
 // WebSocket server for signaling
 const wss = new WebSocket.Server({ server });
 
@@ -140,6 +184,8 @@ const codes = new Map();
 
 // Set a timeout for inactive connections (30 minutes)
 const CONNECTION_TIMEOUT = 30 * 60 * 1000;
+
+console.log('WebSocket server attached to HTTP/HTTPS server...');
 
 wss.on('connection', (ws, req) => {
     const connectionId = generateUniqueId(); // Veya uuidv4()
@@ -232,6 +278,12 @@ wss.on('connection', (ws, req) => {
                     handleDownloadComplete(connectionId);
                     break;
                     
+                case 'request_local_code':
+                     if (data.targetId) {
+                          handleLocalCodeRequest(ws, data.targetId); // Dışarıdaki fonksiyonu çağır
+                     }
+                     break;
+                    
                 default:
                     console.warn('Unknown message type:', data.type);
             }
@@ -302,18 +354,18 @@ wss.on('connection', (ws, req) => {
     });
     
     // Handle creation of a new share code
-    function handleCreateCode(connectionId, code) {
-        console.log(`[${connectionId}] Handling create-code for code: ${code}`);
-        const connectionInfo = connections.get(connectionId);
+    function handleCreateCode(connId, code) {
+        console.log(`[${connId}] Handling create-code for code: ${code}`);
+        const connectionInfo = connections.get(connId);
 
         if (!connectionInfo) {
-             console.error(`[${connectionId}] Cannot create code: Connection info not found!`);
+             console.error(`[${connId}] Cannot create code: Connection info not found!`);
              return;
         }
         
         // Check if code already exists
         if (codes.has(code)) {
-            console.warn(`[${connectionId}] Code ${code} already exists.`);
+            console.warn(`[${connId}] Code ${code} already exists.`);
             connectionInfo.ws.send(JSON.stringify({
                 type: 'error',
                 message: 'Kod zaten kullanımda, lütfen tekrar deneyin.'
@@ -323,7 +375,7 @@ wss.on('connection', (ws, req) => {
         
         // Store the code mapping
         codes.set(code, {
-            senderId: connectionId,
+            senderId: connId,
             receiverId: null,
             createdAt: Date.now()
         });
@@ -333,7 +385,7 @@ wss.on('connection', (ws, req) => {
         connectionInfo.activeCode = code;
         connectionInfo.isSharing = true; // Paylaşım durumunu true yap
         connectionInfo.shareCode = code;  // Paylaşım kodunu sakla
-        console.log(`[${connectionId}] Updated connection info: isSharing=${connectionInfo.isSharing}, shareCode=${connectionInfo.shareCode}, activeCode=${connectionInfo.activeCode}`);
+        console.log(`[${connId}] Updated connection info: isSharing=${connectionInfo.isSharing}, shareCode=${connectionInfo.shareCode}, activeCode=${connectionInfo.activeCode}`);
         // --- BİTİŞ ÖNEMLİ GÜNCELLEME --- 
         
         // Confirm code creation to the client
@@ -343,12 +395,12 @@ wss.on('connection', (ws, req) => {
         }));
 
         // Notify other local peers
-        console.log(`[${connectionId}] Notifying other local peers about new sharer...`);
-        notifyLocalPeersAboutNewSharer(connectionId, connectionInfo.ip);
+        console.log(`[${connId}] Notifying other local peers about new sharer...`);
+        notifyLocalPeersAboutNewSharer(connId, connectionInfo.ip);
     }
     
     // Handle joining an existing share code
-    function handleJoinCode(connectionId, code) {
+    function handleJoinCode(connId, code) {
         console.log('Joining code:', code);
         
         // Check if code exists
@@ -372,10 +424,10 @@ wss.on('connection', (ws, req) => {
         }
         
         // Update code with receiver ID
-        codeInfo.receiverId = connectionId;
+        codeInfo.receiverId = connId;
         
         // Update connection's active code
-        const connection = connections.get(connectionId);
+        const connection = connections.get(connId);
         if (connection) {
             connection.activeCode = code;
         }
@@ -395,11 +447,11 @@ wss.on('connection', (ws, req) => {
     }
     
     // Forward messages between peers
-    function forwardMessage(fromConnectionId, messageType, data) {
-        const connection = connections.get(fromConnectionId);
+    function forwardMessage(fromConnId, messageType, data) {
+        const connection = connections.get(fromConnId);
         
         if (!connection || !connection.activeCode) {
-            console.log(`Cannot forward: Connection ${fromConnectionId} not found or has no active code.`);
+            console.log(`Cannot forward: Connection ${fromConnId} not found or has no active code.`);
             return;
         }
         
@@ -412,9 +464,9 @@ wss.on('connection', (ws, req) => {
         
         // Determine the target connection ID
         let targetId = null;
-        if (codeInfo.senderId === fromConnectionId && codeInfo.receiverId) {
+        if (codeInfo.senderId === fromConnId && codeInfo.receiverId) {
             targetId = codeInfo.receiverId;
-        } else if (codeInfo.receiverId === fromConnectionId && codeInfo.senderId) {
+        } else if (codeInfo.receiverId === fromConnId && codeInfo.senderId) {
             targetId = codeInfo.senderId;
         }
 
@@ -425,7 +477,7 @@ wss.on('connection', (ws, req) => {
         
         const targetConnection = connections.get(targetId);
         if (targetConnection && targetConnection.ws.readyState === WebSocket.OPEN) {
-            console.log(`Forwarding message type '${messageType}' from ${fromConnectionId} to ${targetId}`);
+            console.log(`Forwarding message type '${messageType}' from ${fromConnId} to ${targetId}`);
             targetConnection.ws.send(JSON.stringify({
                 type: messageType,
                 data: data
@@ -438,11 +490,11 @@ wss.on('connection', (ws, req) => {
     }
     
     // Handle download complete notification
-    function handleDownloadComplete(connectionId) {
-        const connection = connections.get(connectionId);
+    function handleDownloadComplete(connId) {
+        const connection = connections.get(connId);
         
         if (!connection || !connection.activeCode) {
-            console.log(`Download complete signal from unknown/inactive connection ${connectionId}`);
+            console.log(`Download complete signal from unknown/inactive connection ${connId}`);
             return;
         }
         
@@ -454,8 +506,8 @@ wss.on('connection', (ws, req) => {
         }
 
         // Ensure message is from the receiver
-        if (codeInfo.receiverId !== connectionId) {
-            console.warn(`Download complete signal received from sender (${connectionId}) instead of receiver for code ${connection.activeCode}. Ignoring.`);
+        if (codeInfo.receiverId !== connId) {
+            console.warn(`Download complete signal received from sender (${connId}) instead of receiver for code ${connection.activeCode}. Ignoring.`);
             return;
         }
 
@@ -474,10 +526,10 @@ wss.on('connection', (ws, req) => {
     }
     
     // Release a code
-    function releaseCode(code, closedConnectionId = null) { // closedConnectionId: hangi bağlantının kapandığını belirtir
+    function releaseCode(code, closedConnId = null) {
         if (codes.has(code)) {
             const codeInfo = codes.get(code);
-            console.log(`[${closedConnectionId || 'Logic'}] Releasing code ${code}`);
+            console.log(`[${closedConnId || 'Logic'}] Releasing code ${code}`);
 
             const senderId = codeInfo.senderId;
             const receiverId = codeInfo.receiverId;
@@ -487,19 +539,19 @@ wss.on('connection', (ws, req) => {
             // İlgili bağlantıların (hala aktifse) paylaşım durumunu sıfırla
             const sender = connections.get(senderId);
             if (sender && sender.activeCode === code) { 
-                console.log(`[${closedConnectionId || 'Logic'}] Resetting status for sender ${senderId}`);
+                console.log(`[${closedConnId || 'Logic'}] Resetting status for sender ${senderId}`);
                 sender.activeCode = null;
                 sender.isSharing = false; // Paylaşımı durdur
                 sender.shareCode = null;
                 // Sadece kod mantıksal olarak (örn. download complete) temizlendiğinde haber ver,
                 // bağlantı kapandığında zaten close event'i haber verecek.
-                if (closedConnectionId === null) { 
+                if (closedConnId === null) { 
                      notifyLocalPeersAboutSharerLeft(senderId, sender.ip);
                 }
             }
             const receiver = connections.get(receiverId);
             if (receiver && receiver.activeCode === code) {
-                console.log(`[${closedConnectionId || 'Logic'}] Resetting activeCode for receiver ${receiverId}`);
+                console.log(`[${closedConnId || 'Logic'}] Resetting activeCode for receiver ${receiverId}`);
                 receiver.activeCode = null;
                 // Alıcının isSharing durumu zaten false olmalı
             }
@@ -511,12 +563,6 @@ wss.on('connection', (ws, req) => {
     }
 });
 
-// Generate a unique ID for connections
-function generateUniqueId() {
-    return Math.random().toString(36).substring(2, 15) + 
-           Math.random().toString(36).substring(2, 15);
-}
-
 // Periodically clean up expired codes (older than 1 hour)
 const CODE_EXPIRATION = 60 * 60 * 1000; // 1 hour
 setInterval(() => {
@@ -524,7 +570,7 @@ setInterval(() => {
     
     codes.forEach((info, code) => {
         if (now - info.createdAt > CODE_EXPIRATION) {
-            console.log('Code expired:', code);
+            console.log('[Expired Code Cleanup] Code expired:', code);
             
             // Notify the sender if still connected
             const sender = connections.get(info.senderId);
@@ -549,18 +595,3 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Check every 10 minutes
 
 console.log(`WebSocket server started on port ${PORT}`);
-
-function notifyLocalPeersAboutSharerLeft(leftSharerId, sharerIp) {
-    if (!sharerIp) {
-         console.warn(`[${leftSharerId}] Cannot notify peers about leaving, IP is missing.`); // Yeni Log
-         return; 
-    }
-    console.log(`[${leftSharerId}] Notifying other local peers about sharer leaving...`); // Yeni Log
-    const message = JSON.stringify({ type: 'local_peer_removed', peerId: leftSharerId });
-     connections.forEach((clientInfo, clientId) => {
-         if (clientId !== leftSharerId && clientInfo.ip === sharerIp && clientInfo.ws.readyState === WebSocket.OPEN) {
-             clientInfo.ws.send(message);
-             // console.log(`Notified ${clientId} about local peer ${leftSharerId} leaving`); // Bu log zaten vardı
-         }
-     });
-}
