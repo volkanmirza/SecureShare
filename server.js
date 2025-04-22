@@ -141,13 +141,40 @@ const codes = new Map();
 // Set a timeout for inactive connections (30 minutes)
 const CONNECTION_TIMEOUT = 30 * 60 * 1000;
 
-wss.on('connection', (ws) => {
-    console.log('New WebSocket connection');
+wss.on('connection', (ws, req) => {
+    const connectionId = generateUniqueId(); // Veya uuidv4()
+    ws.connectionId = connectionId; 
+
+    const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
     
-    let connectionId = generateUniqueId();
-    let activeCode = null;
-    let fileMetadata = null;
-    let receivedData = [];
+    console.log(`Client connected: ${connectionId} from IP: ${ip}`);
+
+    // Bağlantı bilgilerini sakla (IP ve varsayılan paylaşım durumu ile)
+    const connectionInfo = { ws, activeCode: null, ip, isSharing: false, shareCode: null };
+    connections.set(connectionId, connectionInfo);
+
+    // --- YENİ: Aynı DIŞ IP'deki aktif paylaşımcıları ve KODLARINI bul ---
+    const localPeersWithCodes = [];
+    connections.forEach((peerInfo, peerId) => {
+        // Kendisi değil, aynı dış IP, paylaşım yapıyor ve kodu var
+        if (peerId !== connectionId && peerInfo.ip === ip && peerInfo.isSharing && peerInfo.shareCode) {
+            localPeersWithCodes.push({ 
+                id: peerId, 
+                code: peerInfo.shareCode // Kodu listeye ekle
+            }); 
+        }
+    });
+
+    // Yeni istemciye listeyi (ID'ler ve Kodlar ile) gönder
+    if (ws.readyState === WebSocket.OPEN) {
+        // Farklı bir mesaj tipi kullanalım
+        ws.send(JSON.stringify({ 
+            type: 'local_peers_list_with_codes', // Yeni mesaj tipi
+            peers: localPeersWithCodes 
+        }));
+        console.log(`Sent local peers list (with codes) to ${connectionId}:`, localPeersWithCodes);
+    }
+    // --- BİTİŞ: Yeni kod ---
 
     // Set a timeout to close inactive connections
     let timeout = setTimeout(() => {
@@ -160,9 +187,6 @@ wss.on('connection', (ws) => {
             ws.close();
         }, CONNECTION_TIMEOUT);
     }
-    
-    // Add connection to the map
-    connections.set(connectionId, { ws, activeCode });
     
     ws.on('message', (message) => {
         resetTimeout();

@@ -146,6 +146,31 @@
                     <span data-i18n="connectAndDownload">Bağlan ve İndir</span>
                 </button>
 
+                <!-- Start: Local Network Peers List -->
+                <div id="local-peers-container" class="mt-4 pt-2 border-t">
+                    <h3 class="text-sm font-medium mb-2" data-i18n="localDiscoveryTitle">Yerel Ağ Paylaşımları</h3>
+                    <div class="overflow-x-auto whitespace-nowrap pb-2">
+                        <div id="local-peers-list" class="flex space-x-3">
+                            <!-- Mock Data Start -->
+                            <button class="local-peer-item inline-flex items-center space-x-2 p-2 rounded-md bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors cursor-pointer">
+                                <i class="fas fa-desktop text-blue-500"></i>
+                                <span class="text-xs font-medium uppercase" data-peer-id="mock1">Peer 1a2b</span>
+                            </button>
+                            <button class="local-peer-item inline-flex items-center space-x-2 p-2 rounded-md bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors cursor-pointer">
+                                <i class="fas fa-mobile-alt text-green-500"></i>
+                                <span class="text-xs font-medium uppercase" data-peer-id="mock2">Peer 3c4d</span>
+                            </button>
+                            <button class="local-peer-item inline-flex items-center space-x-2 p-2 rounded-md bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors cursor-pointer">
+                                <i class="fas fa-laptop text-yellow-500"></i>
+                                <span class="text-xs font-medium uppercase" data-peer-id="mock3">Peer 5e6f</span>
+                            </button>
+                            <!-- Mock Data End -->
+                            <p id="local-scan-status" class="text-xs italic hidden" data-i18n="scanningLocalNetwork">Taranıyor...</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- End: Local Network Peers List -->
+
                 <div id="download-status" class="mt-6 hidden">
                     <div class="flex items-center mb-2">
                         <div id="download-icon" class="text-2xl mr-2">⏳</div>

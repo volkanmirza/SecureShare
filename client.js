@@ -82,6 +82,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const termsLink = document.getElementById('terms-link');
     const termsError = document.getElementById('terms-error');
     
+    // --- YENİ TANIMLAMALAR --- 
+    // Local Discovery Elements (Download Section)
+    const localPeersList = document.getElementById('local-peers-list');
+    const localScanStatus = document.getElementById('local-scan-status');
+    // --- BİTİŞ YENİ TANIMLAMALAR ---
+    
     // Function to check if sharing should be enabled
     function updateShareButtonState() {
         const shareBtn = document.getElementById('share-btn');
@@ -452,7 +458,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('WebSocket connection established');
         };
         
-        socket.onmessage = async function(event) { // <-- Make async
+        socket.onmessage = async function(event) { // <-- Make async if needed by handlers
             const message = JSON.parse(event.data);
             
             switch (message.type) {
@@ -826,6 +832,29 @@ document.addEventListener('DOMContentLoaded', function() {
                      showSuccessPopup(getTranslation('transferSuccessPrompt')); 
 
                      break;
+
+                // --- YENİ CASE --- 
+                case 'local_peers_list_with_codes':
+                    console.log('Received local peers list with codes:', message.peers);
+                    // Sonraki adımda bu listeyi HTML'e ekleyen kod buraya gelecek.
+                    // Şimdilik sadece konsola yazdırıyoruz.
+                    displayLocalPeersWithCodes(message.peers); // Listeyi gösterecek fonksiyonu çağır
+                    break;
+                // --- BİTİŞ YENİ CASE ---
+
+                // Eski 'local_peers_list' case'i yorum satırı yapabilir veya kaldırabilirsiniz
+                /*
+                case 'local_peers_list': 
+                    displayLocalPeers(message.peers); 
+                    break;
+                */
+               
+                // Eski 'local_code_response' case'i yorum satırı yapabilir veya kaldırabilirsiniz
+                /*
+                case 'local_code_response':
+                    // ... (Bu mantık artık gerekmeyebilir) ...
+                    break;
+                */
 
                 default:
                     console.warn('Unknown message type:', message.type);
@@ -2454,4 +2483,83 @@ document.addEventListener('DOMContentLoaded', function() {
             updateShareButtonState();
         };
     }
+
+    // --- Start: Update for Local Discovery (Download Section) ---
+    // Eski displayLocalPeers fonksiyonunu güncelleyelim veya yenisini ekleyelim
+    function displayLocalPeersWithCodes(peers) {
+        if (!localPeersList || !localScanStatus) return;
+        
+        // Clear only dynamically added peers, keep status message initially
+        const existingPeers = localPeersList.querySelectorAll('.local-peer-item');
+        existingPeers.forEach(peer => peer.remove());
+
+        if (peers && peers.length > 0) {
+            localScanStatus.classList.add('hidden'); // Hide scanning/no peers message
+            peers.forEach(peer => {
+                if (!peer.id || !peer.code) return; // Eksik veri varsa atla
+
+                const peerElement = document.createElement('button');
+                peerElement.classList.add(
+                    'local-peer-item',
+                    'inline-flex',
+                    'items-center',
+                    'space-x-2',
+                    'p-2',
+                    'rounded-md',
+                    'bg-gray-100',
+                    'dark:bg-gray-600',
+                    'hover:bg-gray-200',
+                    'dark:hover:bg-gray-500',
+                    'transition-colors',
+                    'cursor-pointer'
+                );
+                peerElement.setAttribute('data-peer-id', peer.id);
+                peerElement.setAttribute('data-share-code', peer.code); // Kodu data attribute olarak sakla
+
+                const icon = document.createElement('i');
+                icon.classList.add('fas', 'fa-desktop', 'text-blue-500'); // Varsayılan ikon
+                // TODO: Cihaz tipi bilgisi gelirse ikonu değiştir
+                peerElement.appendChild(icon);
+
+                const nameSpan = document.createElement('span');
+                nameSpan.classList.add('text-xs', 'font-medium', 'uppercase');
+                // ID'nin bir kısmını gösterelim
+                nameSpan.textContent = `PEER ${peer.id.substring(0, 4)}`; 
+                peerElement.appendChild(nameSpan);
+
+                // Add the new peer element before the status message
+                localPeersList.insertBefore(peerElement, localScanStatus);
+            });
+        } else {
+            localScanStatus.textContent = getTranslation('noLocalSharesFound');
+            localScanStatus.classList.remove('hidden'); // Show no peers found message
+        }
+    }
+
+    // requestShareCodeForPeer fonksiyonu artık gerekli değil, kaldırılabilir veya yorum satırı yapılabilir.
+    /*
+    function requestShareCodeForPeer(peerId) {
+        // ...
+    }
+    */
+
+    // Tıklama olayını güncelle: Kodu doğrudan data attribute'dan al
+    if (localPeersList) {
+        localPeersList.addEventListener('click', function(event) {
+            const peerButton = event.target.closest('.local-peer-item');
+            
+            if (peerButton) {
+                const shareCode = peerButton.getAttribute('data-share-code');
+                if (shareCode && receiveCode) {
+                    console.log(`Setting receive code from local peer button: ${shareCode}`);
+                    receiveCode.value = shareCode;
+                    showToast(getTranslation('codeCopied')); // Veya daha uygun bir mesaj
+                    receiveCode.focus();
+                } else {
+                     console.warn('Share code not found on button or receiveCode input missing.');
+                }
+            }
+        });
+    }
+    // --- End: Update for Local Discovery (Download Section) ---
 });

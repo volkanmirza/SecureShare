@@ -96,6 +96,10 @@ const translations = {
         "connectionInterrupted": "Connection interrupted.",
         "peerConnectionError": "Peer connection setup failed.",
         
+        // Local Discovery
+        "localDiscoveryTitle": "Local Network Shares",
+        "scanningLocalNetwork": "Scanning local network for shares...",
+        
         // Popup translations
         "successTitle": "Success!",
         "okButton": "OK",
@@ -190,7 +194,10 @@ const translations = {
         "faqItem4Title": "4. General Tips",
         "faqItem4Text1": "Ensure both devices have a stable internet connection.",
         "faqItem4Text2": "Temporarily disabling firewalls or VPNs (if safe to do so) can help identify if they are the cause.",
-        "faqItem4Text3": "Try connecting via a different network (e.g., switch from Wi-Fi to mobile data or vice versa) to see if the network environment is the factor."
+        "faqItem4Text3": "Try connecting via a different network (e.g., switch from Wi-Fi to mobile data or vice versa) to see if the network environment is the factor.",
+        "requestingShareCode": "Requesting share code...",
+        "noLocalSharesFound": "No active shares found on your network.",
+        "localPeer": "Peer"
     },
     tr: {
         // Header
@@ -286,6 +293,10 @@ const translations = {
         "connectionInterrupted": "Bağlantı kesildi.",
         "peerConnectionError": "Eş bağlantısı kurulamadı.",
 
+        // Local Discovery (Turkish)
+        "localDiscoveryTitle": "Yerel Ağ Paylaşımları",
+        "scanningLocalNetwork": "Yerel ağdaki paylaşımlar taranıyor...",
+        
         // Popup translations (Turkish)
         "successTitle": "Başarılı!",
         "okButton": "Tamam",
@@ -380,7 +391,10 @@ const translations = {
         "faqItem4Title": "4. Genel İpuçları",
         "faqItem4Text1": "Her iki cihazın da stabil bir internet bağlantısına sahip olduğundan emin olun.",
         "faqItem4Text2": "Güvenlik duvarlarını veya VPN'leri geçici olarak devre dışı bırakmak (güvenliyse), sorunun kaynağı olup olmadıklarını belirlemeye yardımcı olabilir.",
-        "faqItem4Text3": "Ağ ortamının faktör olup olmadığını görmek için farklı bir ağ üzerinden bağlanmayı deneyin (örn. Wi-Fi'den mobil veriye geçiş veya tam tersi)."
+        "faqItem4Text3": "Ağ ortamının faktör olup olmadığını görmek için farklı bir ağ üzerinden bağlanmayı deneyin (örn. Wi-Fi'den mobil veriye geçiş veya tam tersi).",
+        "requestingShareCode": "Requesting share code...",
+        "noLocalSharesFound": "No active shares found on your network.",
+        "localPeer": "Peer"
     }
 };
 
