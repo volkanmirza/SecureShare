@@ -145,13 +145,9 @@
                     <input type="text" id="receive-code" class="w-full border rounded-md px-3 py-2 focus:outline-none" 
                            data-i18n-placeholder="shareCodePlaceholder" placeholder="Örn: XYZ123">
                 </div>
-                
-                <button id="receive-btn" class="w-full btn btn-primary py-3 px-4">
-                    <span data-i18n="connectAndDownload">Bağlan ve İndir</span>
-                </button>
 
-                <!-- Start: Local Network Peers List -->
-                <div id="local-peers-container" class="mt-4 pt-2 border-t">
+                <!-- YERİ DEĞİŞTİRİLDİ: Yerel Ağ Paylaşımları Bölümü -->
+                <div id="local-peers-container" class="mt-4 pt-2 border-t mb-4"> <!-- border-t ve mb-4 eklendi -->
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="text-sm font-medium" data-i18n="localDiscoveryTitle">Yerel Ağ Paylaşımları</h3>
                         <button id="refresh-local-peers-btn" class="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" title="Yenile">
@@ -160,13 +156,17 @@
                     </div>
                     <div class="overflow-x-auto whitespace-nowrap pb-2">
                         <div id="local-peers-list" class="flex space-x-3">
-                            <!-- Mock Data Removed -->
                             <p id="local-scan-status" class="text-xs italic text-gray-500 hidden" data-i18n="scanningLocalNetwork">Taranıyor...</p> 
                             <!-- Dynamically added peers will appear here -->
                         </div>
                     </div>
                 </div>
-                <!-- End: Local Network Peers List -->
+                <!-- BİTİŞ: Yerel Ağ Paylaşımları Bölümü -->
+                
+                <!-- YERİ DEĞİŞTİRİLDİ: Bağlan ve İndir Butonu -->
+                <button id="receive-btn" class="w-full btn btn-primary py-3 px-4">
+                    <span data-i18n="connectAndDownload">Bağlan ve İndir</span>
+                </button>
 
                 <div id="download-status" class="mt-6 hidden">
                     <div class="flex items-center mb-2">
