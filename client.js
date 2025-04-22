@@ -151,6 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let socket = null;
     let sharedKey = null; // <-- Add variable for shared secret key
     let keyPair = null; // <-- Add variable for own key pair
+    let localPeerRefreshInterval = null; // <- Interval ID için değişken
     
     // WebRTC Variables
     let peerConnection = null;
@@ -452,11 +453,36 @@ document.addEventListener('DOMContentLoaded', function() {
         if (socket !== null) {
             socket.close();
         }
+        // Interval'ı temizle (önceki bağlantıdan kalmış olabilir)
+        if (localPeerRefreshInterval) {
+            clearInterval(localPeerRefreshInterval);
+            localPeerRefreshInterval = null;
+        }
         
         socket = new WebSocket(WS_URL);
         
-        socket.onopen = function() {
+        socket.onopen = () => {
             console.log('WebSocket connection established');
+            // Bağlantı açıldığında ilk listeyi iste
+            socket.send(JSON.stringify({ type: 'get_local_peers' }));
+
+            // --- YENİ: Otomatik yenileme interval'ını başlat --- 
+            if (localPeerRefreshInterval) clearInterval(localPeerRefreshInterval); // Öncekini temizle (güvenlik önlemi)
+            localPeerRefreshInterval = setInterval(() => {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                     // console.log("Auto-refreshing local peers..."); // İsteğe bağlı: Loglama
+                     socket.send(JSON.stringify({ type: 'get_local_peers' }));
+                } else {
+                     // Bağlantı kapalıysa interval'ı durdur
+                     console.log("WebSocket closed during auto-refresh interval. Stopping interval.");
+                     clearInterval(localPeerRefreshInterval);
+                     localPeerRefreshInterval = null;
+                }
+            }, 5000); // 5000 ms = 5 saniye
+            console.log("Started local peer auto-refresh interval (5s).");
+            // --- BİTİŞ: Otomatik yenileme interval'ını başlat --- 
+
+            // NOTE: processUrlCode is now handled during initial load
         };
         
         socket.onmessage = async function(event) { // <-- Make async if needed by handlers
@@ -864,6 +890,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         socket.onclose = function() {
             console.log('WebSocket connection closed');
+            // --- YENİ: Interval'ı durdur --- 
+            if (localPeerRefreshInterval) {
+                clearInterval(localPeerRefreshInterval);
+                localPeerRefreshInterval = null;
+                console.log("Stopped local peer auto-refresh interval due to connection close.");
+            }
+            // --- BİTİŞ: Interval'ı durdur --- 
+            
             // Clean up cryptographic keys on close/error
              sharedKey = null;
              keyPair = null;
@@ -880,6 +914,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         socket.onerror = function(error) {
             console.error('WebSocket error:', error);
+            // --- YENİ: Interval'ı durdur --- 
+            if (localPeerRefreshInterval) {
+                clearInterval(localPeerRefreshInterval);
+                localPeerRefreshInterval = null;
+                console.log("Stopped local peer auto-refresh interval due to connection error.");
+            }
+            // --- BİTİŞ: Interval'ı durdur --- 
+            
             showToast(getTranslation('connectionError'), true);
              // Clean up cryptographic keys on close/error
              sharedKey = null;
