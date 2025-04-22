@@ -121,11 +121,15 @@
                     <div class="mb-2" data-i18n="shareCode">Paylaşım kodu:</div>
                     <div class="flex items-stretch">
                         <input type="text" id="share-code" class="flex-grow border rounded-l-md px-3 py-2 font-mono text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" readonly>
-                        <button id="copy-btn" class="px-4 border-t border-b border-l">
+                        <button id="copy-btn" class="px-4 border-t border-b border-l dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600" title="Kopyala">
                             <i class="fas fa-copy"></i>
                         </button>
-                        <button id="share-native-btn" title="Share Code" class="px-4 rounded-r-md border-t border-b border-r hidden">
+                        <button id="share-native-btn" title="Paylaş" class="px-4 border-t border-b dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 hidden">
                             <i class="fas fa-share-alt"></i>
+                        </button>
+                        <!-- Yeni İptal Butonu -->
+                        <button id="cancel-share-btn" title="İptal Et" class="px-4 rounded-r-md border-t border-b border-r dark:border-gray-600 text-red-600 hover:bg-red-100 dark:hover:bg-red-900">
+                            <i class="fas fa-times"></i>
                         </button>
                     </div>
                     <p id="status-sender" class="mt-2 text-sm"></p>

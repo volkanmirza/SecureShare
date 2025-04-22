@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const shareCode = document.getElementById('share-code');
     const copyBtn = document.getElementById('copy-btn');
     const shareNativeBtn = document.getElementById('share-native-btn'); // <-- Add this line
+    const cancelShareBtn = document.getElementById('cancel-share-btn'); // <- Yeni Buton Referansı
     const statusSender = document.getElementById('status-sender');
     
     const receiveCode = document.getElementById('receive-code');
@@ -1800,6 +1801,24 @@ document.addEventListener('DOMContentLoaded', function() {
                      console.log('User cancelled share.');
                  }
             }
+        });
+    }
+    
+    // Cancel Share button click
+    if (cancelShareBtn) {
+        cancelShareBtn.addEventListener('click', () => {
+            console.log("Cancel share button clicked.");
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                // Sunucuya iptal isteği gönder
+                // Sunucunun bu isteği alıp ilgili kodu ve paylaşım durumunu temizlemesi gerekir.
+                socket.send(JSON.stringify({ type: 'cancel_share' })); 
+                console.log("Sent 'cancel_share' message to server.");
+            } else {
+                console.warn("WebSocket not open when trying to cancel share.");
+                // Bağlantı olmasa bile UI'ı sıfırlayabiliriz.
+            }
+            // İptal isteği gönderilsin veya gönderilmesin, UI'ı hemen sıfırla
+            resetUI(); 
         });
     }
     
