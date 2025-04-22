@@ -488,3 +488,18 @@ setInterval(() => {
 }, 10 * 60 * 1000); // Check every 10 minutes
 
 console.log(`WebSocket server started on port ${PORT}`);
+
+function notifyLocalPeersAboutSharerLeft(leftSharerId, sharerIp) {
+    if (!sharerIp) {
+         console.warn(`[${leftSharerId}] Cannot notify peers about leaving, IP is missing.`); // Yeni Log
+         return; 
+    }
+    console.log(`[${leftSharerId}] Notifying other local peers about sharer leaving...`); // Yeni Log
+    const message = JSON.stringify({ type: 'local_peer_removed', peerId: leftSharerId });
+     connections.forEach((clientInfo, clientId) => {
+         if (clientId !== leftSharerId && clientInfo.ip === sharerIp && clientInfo.ws.readyState === WebSocket.OPEN) {
+             clientInfo.ws.send(message);
+             // console.log(`Notified ${clientId} about local peer ${leftSharerId} leaving`); // Bu log zaten vardı
+         }
+     });
+}
