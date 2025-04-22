@@ -2495,53 +2495,74 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Start: Update for Local Discovery (Download Section) ---
     // Eski displayLocalPeers fonksiyonunu güncelleyelim veya yenisini ekleyelim
     function displayLocalPeersWithCodes(peers) {
-        if (!localPeersList || !localScanStatus) return;
+        console.log("--- displayLocalPeersWithCodes started ---"); // Log başlangıç
+        // Stop spinner and re-enable button if refresh was triggered
+        if (refreshLocalPeersBtn) {
+            const icon = refreshLocalPeersBtn.querySelector('i');
+            if (icon) icon.classList.remove('fa-spin');
+            refreshLocalPeersBtn.disabled = false;
+            console.log("Spinner stopped, refresh button re-enabled.");
+        }
+
+        // DOM elementlerini tekrar kontrol edelim
+        const listElement = document.getElementById('local-peers-list');
+        const statusElement = document.getElementById('local-scan-status');
+
+        if (!listElement || !statusElement) {
+           console.error("displayLocalPeersWithCodes Error: Local peers list or status element not found in DOM!");
+           return;
+        }
+        console.log("List and status elements found.");
         
         // Clear only dynamically added peers, keep status message initially
-        const existingPeers = localPeersList.querySelectorAll('.local-peer-item');
+        const existingPeers = listElement.querySelectorAll('.local-peer-item');
+        console.log(`Found ${existingPeers.length} existing peer items to remove.`);
         existingPeers.forEach(peer => peer.remove());
+        console.log("Existing peer items removed.");
 
         if (peers && peers.length > 0) {
-            localScanStatus.classList.add('hidden'); // Hide scanning/no peers message
-            peers.forEach(peer => {
-                if (!peer.id || !peer.code) return; // Eksik veri varsa atla
+            console.log(`Processing ${peers.length} peers received from server.`);
+            statusElement.classList.add('hidden'); // Hide scanning/no peers message
+            peers.forEach((peer, index) => {
+                console.log(`  Processing peer ${index + 1}:`, peer);
+                if (!peer || !peer.id || !peer.code) { // Daha sağlam kontrol
+                     console.warn(`    Skipping peer ${index + 1} due to missing id or code.`);
+                     return; // Bu eşi atla, döngüye devam et
+                }
 
-                const peerElement = document.createElement('button');
-                peerElement.classList.add(
-                    'local-peer-item',
-                    'inline-flex',
-                    'items-center',
-                    'space-x-2',
-                    'p-2',
-                    'rounded-md',
-                    'bg-gray-100',
-                    'dark:bg-gray-600',
-                    'hover:bg-gray-200',
-                    'dark:hover:bg-gray-500',
-                    'transition-colors',
-                    'cursor-pointer'
-                );
-                peerElement.setAttribute('data-peer-id', peer.id);
-                peerElement.setAttribute('data-share-code', peer.code); // Kodu data attribute olarak sakla
+                try {
+                    const peerElement = document.createElement('button');
+                    peerElement.classList.add(
+                        'local-peer-item',
+                        'inline-flex', 'items-center', 'space-x-2', 'p-2', 'rounded-md',
+                        'bg-gray-100', 'dark:bg-gray-600', 'hover:bg-gray-200', 'dark:hover:bg-gray-500',
+                        'transition-colors', 'cursor-pointer'
+                    );
+                    peerElement.setAttribute('data-peer-id', peer.id);
+                    peerElement.setAttribute('data-share-code', peer.code);
 
-                const icon = document.createElement('i');
-                icon.classList.add('fas', 'fa-desktop', 'text-blue-500'); // Varsayılan ikon
-                // TODO: Cihaz tipi bilgisi gelirse ikonu değiştir
-                peerElement.appendChild(icon);
+                    const icon = document.createElement('i');
+                    icon.classList.add('fas', 'fa-desktop', 'text-blue-500');
+                    peerElement.appendChild(icon);
 
-                const nameSpan = document.createElement('span');
-                nameSpan.classList.add('text-xs', 'font-medium', 'uppercase');
-                // ID'nin bir kısmını gösterelim
-                nameSpan.textContent = `PEER ${peer.id.substring(0, 4)}`; 
-                peerElement.appendChild(nameSpan);
+                    const nameSpan = document.createElement('span');
+                    nameSpan.classList.add('text-xs', 'font-medium', 'uppercase');
+                    nameSpan.textContent = `PEER ${peer.id.substring(0, 4)}`; 
+                    peerElement.appendChild(nameSpan);
 
-                // Add the new peer element before the status message
-                localPeersList.insertBefore(peerElement, localScanStatus);
+                    // Add the new peer element before the status message
+                    listElement.insertBefore(peerElement, statusElement);
+                    console.log(`    Successfully added button for peer ${peer.id}`);
+                } catch (error) {
+                     console.error(`    Error creating or adding button for peer ${peer.id}:`, error);
+                }
             });
         } else {
-            localScanStatus.textContent = getTranslation('noLocalSharesFound');
-            localScanStatus.classList.remove('hidden'); // Show no peers found message
+            console.log("No peers received or peers array is empty. Showing 'no shares found' message.");
+            statusElement.textContent = getTranslation('noLocalSharesFound');
+            statusElement.classList.remove('hidden'); // Show no peers found message
         }
+         console.log("--- displayLocalPeersWithCodes finished ---"); // Log bitiş
     }
 
     // requestShareCodeForPeer fonksiyonu artık gerekli değil, kaldırılabilir veya yorum satırı yapılabilir.
@@ -2600,20 +2621,76 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Modify displayLocalPeersWithCodes to stop spinner
+    // Modify displayLocalPeersWithCodes to stop spinner and add logging
     function displayLocalPeersWithCodes(peers) {
+        console.log("--- displayLocalPeersWithCodes started ---"); // Log başlangıç
         // Stop spinner and re-enable button if refresh was triggered
         if (refreshLocalPeersBtn) {
             const icon = refreshLocalPeersBtn.querySelector('i');
             if (icon) icon.classList.remove('fa-spin');
             refreshLocalPeersBtn.disabled = false;
+            console.log("Spinner stopped, refresh button re-enabled.");
         }
 
-        if (!localPeersList || !localScanStatus) {
-           // ... (rest of the function remains the same) ...
+        // DOM elementlerini tekrar kontrol edelim
+        const listElement = document.getElementById('local-peers-list');
+        const statusElement = document.getElementById('local-scan-status');
+
+        if (!listElement || !statusElement) {
+           console.error("displayLocalPeersWithCodes Error: Local peers list or status element not found in DOM!");
+           return;
         }
+        console.log("List and status elements found.");
         
-        // ... (rest of the function remains the same) ...
+        // Clear only dynamically added peers, keep status message initially
+        const existingPeers = listElement.querySelectorAll('.local-peer-item');
+        console.log(`Found ${existingPeers.length} existing peer items to remove.`);
+        existingPeers.forEach(peer => peer.remove());
+        console.log("Existing peer items removed.");
+
+        if (peers && peers.length > 0) {
+            console.log(`Processing ${peers.length} peers received from server.`);
+            statusElement.classList.add('hidden'); // Hide scanning/no peers message
+            peers.forEach((peer, index) => {
+                console.log(`  Processing peer ${index + 1}:`, peer);
+                if (!peer || !peer.id || !peer.code) { // Daha sağlam kontrol
+                     console.warn(`    Skipping peer ${index + 1} due to missing id or code.`);
+                     return; // Bu eşi atla, döngüye devam et
+                }
+
+                try {
+                    const peerElement = document.createElement('button');
+                    peerElement.classList.add(
+                        'local-peer-item',
+                        'inline-flex', 'items-center', 'space-x-2', 'p-2', 'rounded-md',
+                        'bg-gray-100', 'dark:bg-gray-600', 'hover:bg-gray-200', 'dark:hover:bg-gray-500',
+                        'transition-colors', 'cursor-pointer'
+                    );
+                    peerElement.setAttribute('data-peer-id', peer.id);
+                    peerElement.setAttribute('data-share-code', peer.code);
+
+                    const icon = document.createElement('i');
+                    icon.classList.add('fas', 'fa-desktop', 'text-blue-500');
+                    peerElement.appendChild(icon);
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.classList.add('text-xs', 'font-medium', 'uppercase');
+                    nameSpan.textContent = `PEER ${peer.id.substring(0, 4)}`; 
+                    peerElement.appendChild(nameSpan);
+
+                    // Add the new peer element before the status message
+                    listElement.insertBefore(peerElement, statusElement);
+                    console.log(`    Successfully added button for peer ${peer.id}`);
+                } catch (error) {
+                     console.error(`    Error creating or adding button for peer ${peer.id}:`, error);
+                }
+            });
+        } else {
+            console.log("No peers received or peers array is empty. Showing 'no shares found' message.");
+            statusElement.textContent = getTranslation('noLocalSharesFound');
+            statusElement.classList.remove('hidden'); // Show no peers found message
+        }
+         console.log("--- displayLocalPeersWithCodes finished ---"); // Log bitiş
     }
 
     // --- End: Update for Local Discovery (Download Section) ---
