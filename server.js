@@ -250,12 +250,14 @@ wss.on('connection', (ws, req) => {
                 return; 
             }
             console.log(`[${connectionId}] Message received: ${messageString}`);
-            console.log(`    Connection Info: IP=${connectionInfo.ip}, Sharing=${connectionInfo.isSharing}, Code=${connectionInfo.shareCode}`); // connectionInfo'yu logla
+            console.log(`    Current Connection State in Map (BEFORE switch): isSharing=${connectionInfo?.isSharing}, shareCode=${connectionInfo?.shareCode}`); // DURUMU BURADA KONTROL ET
             
             switch (data.type) {
                 case 'create-code':
-                    // connectionInfo artık burada erişilebilir olmalı
                     handleCreateCode(connectionId, data.code);
+                    // handleCreateCode bittikten sonra durumu tekrar kontrol et
+                    const infoAfterCreate = connections.get(connectionId);
+                    console.log(`    Connection State in Map (AFTER create-code handled): isSharing=${infoAfterCreate?.isSharing}, shareCode=${infoAfterCreate?.shareCode}`);
                     break;
                     
                 case 'join-code':
@@ -421,48 +423,48 @@ wss.on('connection', (ws, req) => {
     
     // Handle creation of a new share code
     function handleCreateCode(connId, code) {
-        console.log(`[${connId}] Handling create-code for code: ${code}`);
+        console.log(`[${connId}] ==> handleCreateCode - START - Code: ${code}`); // Fonksiyon başlangıcı
         const connectionInfo = connections.get(connId);
 
         if (!connectionInfo) {
-             console.error(`[${connId}] Cannot create code: Connection info not found!`);
+             console.error(`[${connId}] ==> handleCreateCode - ERROR: Connection info not found!`);
              return;
         }
-        
-        // Check if code already exists
+        console.log(`[${connId}] ==> handleCreateCode - Found connectionInfo. Current isSharing: ${connectionInfo.isSharing}`); // Mevcut durumu logla
+
         if (codes.has(code)) {
-            console.warn(`[${connId}] Code ${code} already exists.`);
+            console.warn(`[${connId}] ==> handleCreateCode - Code ${code} already exists.`);
             connectionInfo.ws.send(JSON.stringify({
                 type: 'error',
                 message: 'Kod zaten kullanımda, lütfen tekrar deneyin.'
             }));
             return;
         }
-        
-        // Store the code mapping
-        codes.set(code, {
-            senderId: connId,
-            receiverId: null,
-            createdAt: Date.now()
-        });
-        
-        // --- ÖNEMLİ GÜNCELLEME --- 
-        // Update the connection's info in the connections Map
-        connectionInfo.activeCode = code;
-        connectionInfo.isSharing = true; // Paylaşım durumunu true yap
-        connectionInfo.shareCode = code;  // Paylaşım kodunu sakla
-        console.log(`[${connId}] Updated connection info: isSharing=${connectionInfo.isSharing}, shareCode=${connectionInfo.shareCode}, activeCode=${connectionInfo.activeCode}`);
-        // --- BİTİŞ ÖNEMLİ GÜNCELLEME --- 
-        
-        // Confirm code creation to the client
-        connectionInfo.ws.send(JSON.stringify({
-            type: 'code-created',
-            code: code
-        }));
 
-        // Notify other local peers
-        console.log(`[${connId}] Notifying other local peers about new sharer...`);
+        codes.set(code, { senderId: connId, receiverId: null, createdAt: Date.now() });
+        console.log(`[${connId}] ==> handleCreateCode - Code ${code} added to 'codes' map.`);
+
+        // --- Durum Güncelleme ---
+        connectionInfo.activeCode = code;
+        connectionInfo.isSharing = true; // Paylaşımı başlat
+        connectionInfo.shareCode = code;  // Kodu sakla
+        // --- Bitiş Durum Güncelleme ---
+
+        // Güncellenen durumu Map'e tekrar set edelim (Ekstra güvenlik için, normalde gerekmeyebilir)
+        // connections.set(connId, connectionInfo); 
+        // console.log(`[${connId}] ==> handleCreateCode - Explicitly set updated connectionInfo back to map.`);
+
+        // Güncellenmiş bilgiyi logla
+        console.log(`[${connId}] ==> handleCreateCode - Updated connection info: isSharing=${connectionInfo.isSharing}, shareCode=${connectionInfo.shareCode}, activeCode=${connectionInfo.activeCode}`);
+
+        // İstemciye onayı gönder
+        connectionInfo.ws.send(JSON.stringify({ type: 'code-created', code: code }));
+        console.log(`[${connId}] ==> handleCreateCode - Sent 'code-created' to client.`);
+
+        // Diğerlerini bilgilendir
+        console.log(`[${connId}] ==> handleCreateCode - Calling notifyLocalPeersAboutNewSharer...`);
         notifyLocalPeersAboutNewSharer(connId, connectionInfo.ip);
+        console.log(`[${connId}] ==> handleCreateCode - FINISHED`); // Fonksiyon bitişi
     }
     
     // Handle joining an existing share code
