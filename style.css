@@ -424,3 +424,64 @@ footer {
     background-color: var(--infoBackgroundColor); /* Slightly different background on hover */
     color: var(--textColor); /* Main text color on hover */
 }
+
+/* Dark mode styles */
+[data-theme='dark'] {
+    --backgroundColor: #1f2937; /* gray-800 */
+    --cardBackgroundColor: #374151; /* gray-700 */
+    --textColor: #f3f4f6; /* gray-100 */
+    --secondaryTextColor: #9ca3af; /* gray-400 */
+    --accentColor: #6366f1; /* indigo-500 */
+    --accentHoverColor: #4f46e5; /* indigo-600 */
+    --borderColor: #4b5563; /* gray-600 */
+    --inputBackgroundColor: #4b5563; /* gray-600 */
+    --successColor: #10b981; /* green-500 */
+    --successHoverColor: #059669; /* green-600 */
+    --errorColor: #ef4444; /* red-500 */
+    --infoBackgroundColor: #4b5563; /* gray-600 */
+}
+
+/* Specific dark mode adjustments */
+[data-theme='dark'] #drop-zone {
+    background-color: #374151; /* Match card background */
+}
+
+[data-theme='dark'] #drop-zone.drag-over {
+    background-color: rgba(99, 102, 241, 0.15); /* Slightly darker accent */
+}
+
+[data-theme='dark'] .toggle-btn {
+    background-color: #4b5563; /* gray-600 */
+    color: #d1d5db; /* gray-300 */
+    border-color: #6b7280; /* gray-500 */
+}
+
+[data-theme='dark'] .toggle-btn:hover {
+    background-color: #555f71; /* Slightly lighter gray-600 */
+}
+
+[data-theme='dark'] #copy-btn,
+[data-theme='dark'] #share-native-btn,
+[data-theme='dark'] #cancel-share-btn {
+    border-color: var(--borderColor);
+}
+
+[data-theme='dark'] #copy-btn:hover,
+[data-theme='dark'] #share-native-btn:hover {
+    background-color: #4b5563; /* gray-600 */
+}
+
+[data-theme='dark'] #cancel-share-btn:hover {
+    background-color: rgba(239, 68, 68, 0.2); /* Lighter red */
+}
+
+[data-theme='dark'] #local-peers-list .peer-button {
+    background-color: var(--accentColor);
+    color: white;
+    border-color: var(--accentColor);
+}
+
+[data-theme='dark'] #local-peers-list .peer-button:hover {
+    background-color: var(--accentHoverColor);
+    border-color: var(--accentHoverColor);
+}
