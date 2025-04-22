@@ -2593,12 +2593,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 try {
                     const peerElement = document.createElement('button');
+                    // Temel sınıfı ekle (CSS hedeflemesi için)
+                    peerElement.classList.add('local-peer-item'); 
+                    
+                    // Tailwind sınıflarını (açık tema ve genel) ekle
                     peerElement.classList.add(
-                        'local-peer-item',
                         'inline-flex', 'items-center', 'space-x-2', 'p-2', 'rounded-md',
-                        'bg-gray-100', 'dark:bg-gray-600', 'hover:bg-gray-200', 'dark:hover:bg-gray-500',
+                        'bg-gray-100', // Açık tema arka planı
+                        'hover:bg-gray-200', // Açık tema hover
                         'transition-colors', 'cursor-pointer'
                     );
+                    // ÖNEMLİ: dark: ile başlayan sınıflar kaldırıldı.
+                    // Styling artık tamamen style.css'teki [data-theme='dark'] .local-peer-item seçicisi ile yönetilecek.
+                    
                     peerElement.setAttribute('data-peer-id', peer.id);
                     peerElement.setAttribute('data-share-code', peer.code);
 
@@ -2608,11 +2615,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const nameSpan = document.createElement('span');
                     nameSpan.classList.add('text-xs', 'font-medium', 'uppercase');
-                    // ID yerine paylaşım kodunu gösterelim
-                    nameSpan.textContent = `PEER ${peer.code}`; // peer.id yerine peer.code kullan
+                    nameSpan.textContent = `PEER ${peer.code}`;
                     peerElement.appendChild(nameSpan);
 
-                    // Add the new peer element before the status message
                     listElement.insertBefore(peerElement, statusElement);
                     console.log(`    Successfully added button for peer ${peer.id}`);
                 } catch (error) {
@@ -2725,12 +2730,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 try {
                     const peerElement = document.createElement('button');
+                    // Temel sınıfı ekle (CSS hedeflemesi için)
+                    peerElement.classList.add('local-peer-item'); 
+                    
+                    // Tailwind sınıflarını (açık tema ve genel) ekle
                     peerElement.classList.add(
-                        'local-peer-item',
                         'inline-flex', 'items-center', 'space-x-2', 'p-2', 'rounded-md',
-                        'bg-gray-100', 'dark:bg-gray-600', 'hover:bg-gray-200', 'dark:hover:bg-gray-500',
+                        'bg-gray-100', // Açık tema arka planı
+                        'hover:bg-gray-200', // Açık tema hover
                         'transition-colors', 'cursor-pointer'
                     );
+                    // ÖNEMLİ: dark: ile başlayan sınıflar kaldırıldı.
+                    // Styling artık tamamen style.css'teki [data-theme='dark'] .local-peer-item seçicisi ile yönetilecek.
+                    
                     peerElement.setAttribute('data-peer-id', peer.id);
                     peerElement.setAttribute('data-share-code', peer.code);
 
@@ -2740,11 +2752,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const nameSpan = document.createElement('span');
                     nameSpan.classList.add('text-xs', 'font-medium', 'uppercase');
-                    // ID yerine paylaşım kodunu gösterelim
-                    nameSpan.textContent = `PEER ${peer.code}`; // peer.id yerine peer.code kullan
+                    nameSpan.textContent = `PEER ${peer.code}`;
                     peerElement.appendChild(nameSpan);
 
-                    // Add the new peer element before the status message
                     listElement.insertBefore(peerElement, statusElement);
                     console.log(`    Successfully added button for peer ${peer.id}`);
                 } catch (error) {
