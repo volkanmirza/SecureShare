@@ -300,30 +300,32 @@ wss.on('connection', (ws, req) => {
     
     ws.on('close', () => {
         const connectionId = ws.connectionId; // ID'yi al
-        console.log(`[${connectionId}] WebSocket connection closed`); // Log güncellendi
-        
+        console.log(`[${connectionId}] WebSocket connection closed.`); // Log güncellendi
+
         clearTimeout(timeout);
-        
+
         const closedConnectionInfo = connections.get(connectionId);
         if (closedConnectionInfo) {
             const wasSharing = closedConnectionInfo.isSharing;
             const clientIp = closedConnectionInfo.ip;
             const activeCode = closedConnectionInfo.activeCode;
 
-            console.log(`[${connectionId}] Removing connection info. Was sharing: ${wasSharing}, Code: ${activeCode}, IP: ${clientIp}`); // Detaylı log
+            console.log(`[${connectionId}] Removing connection info. Was sharing: ${wasSharing}, Code: ${activeCode}, IP: ${clientIp}`);
+
+            // Bağlantıyı Map'ten sil
             connections.delete(connectionId);
 
-            // Eğer aktif bir kodu varsa, onu temizle
+            // Eğer aktif bir kodu varsa, onu ve ilgili durumu temizle
             if (activeCode) {
-                // releaseCode fonksiyonu zaten isSharing durumunu sıfırlar
-                releaseCode(activeCode, connectionId); 
+                console.log(`[${connectionId}] Connection had active code ${activeCode}. Calling releaseCode.`);
+                // releaseCode fonksiyonu isSharing durumunu sıfırlayacak
+                releaseCode(activeCode, connectionId); // Kapandığı için ID'yi gönder
             }
 
-            // Eğer paylaşım yapıyorduysa (ve kodu temizlenmediyse bile) diğerlerini bilgilendir
-            // Not: releaseCode içinde notify çağrıldığı için bu belki gereksiz?
-            // Ama bağlantı aniden kapanırsa diye burada da kalsın.
+            // Eğer paylaşım yapıyorduysa (ve belki kodu release edilemediyse bile), diğerlerini bilgilendir
             if (wasSharing) {
-                notifyLocalPeersAboutSharerLeft(connectionId, clientIp);
+                 console.log(`[${connectionId}] Sharer disconnected. Notifying local peers on IP ${clientIp}.`);
+                 notifyLocalPeersAboutSharerLeft(connectionId, clientIp);
             }
         } else {
              console.warn(`[${connectionId}] Connection info not found during close event.`);
@@ -526,39 +528,52 @@ wss.on('connection', (ws, req) => {
     }
     
     // Release a code
-    function releaseCode(code, closedConnId = null) {
+    function releaseCode(code, closedConnectionId = null) { // closedConnectionId: hangi bağlantının kapandığını belirtir
         if (codes.has(code)) {
             const codeInfo = codes.get(code);
-            console.log(`[${closedConnId || 'Logic'}] Releasing code ${code}`);
+            console.log(`[${closedConnectionId || 'Logic'}] Releasing code ${code}. Current codes map size: ${codes.size}`);
 
             const senderId = codeInfo.senderId;
             const receiverId = codeInfo.receiverId;
             codes.delete(code); // Kodu sil
+            console.log(`[${closedConnectionId || 'Logic'}] Code ${code} deleted from codes map. New size: ${codes.size}`);
 
-            // --- ÖNEMLİ GÜNCELLEME --- 
-            // İlgili bağlantıların (hala aktifse) paylaşım durumunu sıfırla
+            // Göndericinin durumunu sıfırla (eğer hala bağlıysa)
             const sender = connections.get(senderId);
-            if (sender && sender.activeCode === code) { 
-                console.log(`[${closedConnId || 'Logic'}] Resetting status for sender ${senderId}`);
+            // Sadece kodla eşleşiyorsa sıfırla (başka bir kod almış olabilir)
+            if (sender && sender.activeCode === code) {
+                console.log(`[${closedConnectionId || 'Logic'}] Resetting status for sender ${senderId}. Current isSharing: ${sender.isSharing}`);
                 sender.activeCode = null;
-                sender.isSharing = false; // Paylaşımı durdur
+                sender.isSharing = false; // Paylaşımı DURDUR
                 sender.shareCode = null;
-                // Sadece kod mantıksal olarak (örn. download complete) temizlendiğinde haber ver,
-                // bağlantı kapandığında zaten close event'i haber verecek.
-                if (closedConnId === null) { 
+                console.log(`[${closedConnectionId || 'Logic'}] Sender ${senderId} status updated: isSharing=${sender.isSharing}, shareCode=${sender.shareCode}, activeCode=${sender.activeCode}`);
+
+                // Eğer kod temizliği bağlantı kapanması *dışında* bir nedenle yapıldıysa
+                // (örn. indirme tamamlandı), diğerlerini burada bilgilendir.
+                // Bağlantı kapandıysa, 'close' olayındaki notify çalışacak.
+                if (closedConnectionId === null) {
+                     console.log(`[Logic] Code released logically. Notifying peers about sender ${senderId} stopping share.`);
                      notifyLocalPeersAboutSharerLeft(senderId, sender.ip);
                 }
+            } else if (sender && sender.activeCode !== code) {
+                 console.log(`[${closedConnectionId || 'Logic'}] Sender ${senderId} found but has different active code (${sender.activeCode}). Not resetting status for code ${code}.`);
+            } else if (!sender) {
+                console.log(`[${closedConnectionId || 'Logic'}] Sender ${senderId} not found in connections map.`);
             }
+
+            // Alıcının durumunu sıfırla (eğer hala bağlıysa)
             const receiver = connections.get(receiverId);
             if (receiver && receiver.activeCode === code) {
-                console.log(`[${closedConnId || 'Logic'}] Resetting activeCode for receiver ${receiverId}`);
+                console.log(`[${closedConnectionId || 'Logic'}] Resetting activeCode for receiver ${receiverId}`);
                 receiver.activeCode = null;
-                // Alıcının isSharing durumu zaten false olmalı
+            } else if (receiver && receiver.activeCode !== code) {
+                 console.log(`[${closedConnectionId || 'Logic'}] Receiver ${receiverId} found but has different active code (${receiver.activeCode}). Not resetting activeCode for code ${code}.`);
+            } else if (receiverId && !receiver) { // receiverId null değilse ama bağlantı yoksa
+                console.log(`[${closedConnectionId || 'Logic'}] Receiver ${receiverId} not found in connections map.`);
             }
-            // --- BİTİŞ ÖNEMLİ GÜNCELLEME --- 
 
         } else {
-            // console.log(`Attempted to release non-existent code: ${code}`);
+             console.warn(`[${closedConnectionId || 'Logic'}] Attempted to release non-existent code: ${code}`);
         }
     }
 });
