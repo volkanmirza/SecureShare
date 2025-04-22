@@ -236,46 +236,49 @@ wss.on('connection', (ws, req) => {
     
     ws.on('message', (message) => {
         resetTimeout();
+        const connectionId = ws.connectionId; // ID'yi dışarı alalım
+        let connectionInfo = null; // connectionInfo'yu try dışında tanımla
         
         try {
-            // --- YENİ: Mesajı önce string'e çevir --- 
             const messageString = message.toString();
-            // --- BİTİŞ YENİ ---
-            const data = JSON.parse(messageString); // String'i parse et
-            const connectionId = ws.connectionId; // ID'yi al (try bloğu içinde daha güvenli)
-            const connectionInfo = connections.get(connectionId);
-
+            const data = JSON.parse(messageString);
+            
+            // connectionInfo'yu burada al ve hemen kontrol et
+            connectionInfo = connections.get(connectionId);
             if (!connectionInfo) {
-                console.error(`Received message from unknown connection ID: ${connectionId}`);
+                console.error(`[${connectionId}] Received message but connection info not found!`);
                 return; 
             }
-            console.log(`[${connectionId}] Message received: ${messageString}`); // Ham mesajı logla
+            console.log(`[${connectionId}] Message received: ${messageString}`);
+            console.log(`    Connection Info: IP=${connectionInfo.ip}, Sharing=${connectionInfo.isSharing}, Code=${connectionInfo.shareCode}`); // connectionInfo'yu logla
             
             switch (data.type) {
                 case 'create-code':
-                    // Create a new share code
+                    // connectionInfo artık burada erişilebilir olmalı
                     handleCreateCode(connectionId, data.code);
                     break;
                     
                 case 'join-code':
-                    // Join an existing share code
+                    // connectionInfo artık burada erişilebilir olmalı
                     handleJoinCode(connectionId, data.code);
                     break;
 
                 case 'get_local_peers':
                     console.log(`[${connectionId}] Received 'get_local_peers' request.`);
-                    // Mevcut bağlantı bilgilerini kullanarak listeyi yeniden oluştur ve gönder
-                    const currentIp = connectionInfo.ip; // Bağlantı bilgisinden IP'yi al
+                    // connectionInfo artık burada erişilebilir olmalı
+                    const currentIp = connectionInfo.ip; 
                     const updatedLocalPeers = [];
+                    console.log(`[${connectionId}] Checking connections map (size: ${connections.size}) for peers with IP ${currentIp}...`); 
                     connections.forEach((peerInfo, peerId) => {
+                        console.log(`    Checking Peer: ${peerId}, IP: ${peerInfo.ip}, isSharing: ${peerInfo.isSharing}, shareCode: ${peerInfo.shareCode}`); 
                         if (peerId !== connectionId && peerInfo.ip === currentIp && peerInfo.isSharing && peerInfo.shareCode) {
+                            console.log(`        --> Adding peer ${peerId} to the list.`);
                             updatedLocalPeers.push({ 
                                 id: peerId, 
                                 code: peerInfo.shareCode 
                             }); 
                         }
                     });
-                    // İstek yapan istemciye güncel listeyi gönder
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ 
                             type: 'local_peers_list_with_codes',
@@ -320,8 +323,8 @@ wss.on('connection', (ws, req) => {
                     
                 case 'cancel_share':
                     console.log(`[${connectionId}] Received 'cancel_share' request.`);
-                    const connectionInfo = connections.get(connectionId);
-                    if (connectionInfo && connectionInfo.isSharing && connectionInfo.activeCode) {
+                    // connectionInfo burada zaten tanımlı ve kontrol edilmiş olmalı
+                    if (connectionInfo.isSharing && connectionInfo.activeCode) { 
                         const codeToCancel = connectionInfo.activeCode; // Kodu bir değişkende tut
                         console.log(`[${connectionId}] Cancelling share for code ${codeToCancel}. Current state: isSharing=${connectionInfo.isSharing}, shareCode=${connectionInfo.shareCode}, activeCode=${connectionInfo.activeCode}`);
                         // releaseCode fonksiyonu durumu sıfırlamalı
@@ -336,7 +339,7 @@ wss.on('connection', (ws, req) => {
                         }
 
                     } else {
-                         console.warn(`[${connectionId}] Received 'cancel_share' but user is not sharing or has no active code. isSharing=${connectionInfo?.isSharing}, activeCode=${connectionInfo?.activeCode}`);
+                         console.warn(`[${connectionId}] Received 'cancel_share' but user is not sharing or has no active code.`);
                     }
                     break;
                     
@@ -344,8 +347,8 @@ wss.on('connection', (ws, req) => {
                     console.warn(`[${connectionId}] Unknown message type:`, data.type);
             }
         } catch (error) {
-            const connectionIdForError = ws.connectionId || 'unknown'; // ID'yi almayı dene
-            console.error(`[${connectionIdForError}] Error parsing message or processing:`, error);
+            // ... (hata işleme - connectionInfo null olabilir) ...
+            console.error(`[${connectionId || 'unknown'}] Error parsing message or processing:`, error);
             // Gelen ham mesajı da loglayalım (eğer string değilse bile)
             console.error(`    Raw message that caused error:`, message);
             
