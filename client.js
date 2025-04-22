@@ -2547,7 +2547,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const nameSpan = document.createElement('span');
                     nameSpan.classList.add('text-xs', 'font-medium', 'uppercase');
-                    nameSpan.textContent = `PEER ${peer.id.substring(0, 4)}`; 
+                    // ID yerine paylaşım kodunu gösterelim
+                    nameSpan.textContent = `PEER ${peer.code}`; // peer.id yerine peer.code kullan
                     peerElement.appendChild(nameSpan);
 
                     // Add the new peer element before the status message
@@ -2678,7 +2679,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const nameSpan = document.createElement('span');
                     nameSpan.classList.add('text-xs', 'font-medium', 'uppercase');
-                    nameSpan.textContent = `PEER ${peer.id.substring(0, 4)}`; 
+                    // ID yerine paylaşım kodunu gösterelim
+                    nameSpan.textContent = `PEER ${peer.code}`; // peer.id yerine peer.code kullan
                     peerElement.appendChild(nameSpan);
 
                     // Add the new peer element before the status message
